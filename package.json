@@ -1,0 +1,22 @@
+{
+  "name": "japanese-learning-app",
+  "version": "1.0.0",
+  "description": "Japanese Learning Application with Kanji and Vocabulary",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "keywords": ["japanese", "learning", "kanji", "vocabulary", "jlpt"],
+  "author": "Your Name",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2",
+    "mysql2": "^3.6.0",
+    "express-session": "^1.17.3",
+    "express-rate-limit": "^7.1.5"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  }
+}

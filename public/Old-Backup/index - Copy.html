@@ -1,0 +1,862 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Japanese Learning App</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="header">
+        <h1>🗾 Japanese Learning App</h1>
+        <p>Master Kanji and Vocabulary</p>
+        <div class="user-selector">
+            <label for="currentUser">Current User:</label>
+            <select id="currentUser" onchange="userChanged()">
+                <option value="1">testuser</option>
+                <option value="2">friend1</option>
+            </select>
+        </div>
+    </div>
+    
+    <div class="nav-buttons">
+        <button class="nav-btn active" onclick="showKanji()">Kanji Dictionary</button>
+        <button class="nav-btn" onclick="showWords()">Word Dictionary</button>
+        <button class="nav-btn" onclick="showQuiz()">Quiz</button>
+    </div>
+    
+    <div class="search-box">
+        <input type="text" class="search-input" id="searchInput" placeholder="Search kanji or words...">
+        <button class="search-btn" onclick="searchItems()">Search</button>
+        <button class="search-btn" onclick="showAll()" style="background-color: #6c7b7f;">Show All</button>
+    </div>
+    
+    <!-- JLPT Level Filter (only shows for kanji) -->
+    <div class="filter-box" id="jlptFilter" style="display: none;">
+        <label for="jlptSelect">Filter by JLPT Level:</label>
+        <select id="jlptSelect" onchange="filterByJLPT()">
+            <option value="">All Levels</option>
+            <option value="N5">N5</option>
+            <option value="N4">N4</option>
+            <option value="N3">N3</option>
+            <option value="N2">N2</option>
+            <option value="N1">N1</option>
+            <option value="NULL">No JLPT Level</option>
+        </select>
+    </div>
+    
+    <!-- Quiz Selection Filter -->
+    <div class="filter-box">
+        <label for="quizFilter">Show:</label>
+        <select id="quizFilter" onchange="filterByQuizSelection()">
+            <option value="all">All Items</option>
+            <option value="selected">Selected for Quiz</option>
+            <option value="unselected">Not Selected for Quiz</option>
+        </select>
+    </div>
+    
+    <div id="content" class="container">
+        <div class="loading">Loading kanji...</div>
+    </div>
+    
+    <!-- Pagination Controls -->
+    <div class="pagination" id="pagination" style="display: none;">
+        <button class="page-btn" id="prevBtn" onclick="previousPage()">&laquo; Previous</button>
+        <span class="page-info" id="pageInfo">Page 1 of 1</span>
+        <button class="page-btn" id="nextBtn" onclick="nextPage()">Next &raquo;</button>
+    </div>
+
+<script>
+let currentView = 'kanji';
+let currentPage = 1;
+let itemsPerPage = 30;
+let totalItems = [];
+let filteredItems = [];
+let userSelections = new Set(); // Track which items are selected for current user
+
+// Quiz variables
+let quizData = [];
+let currentQuestionIndex = 0;
+let quizResults = [];
+let currentQuestion = null;
+let hasAnswered = false;
+
+function getCurrentUserId() {
+    return document.getElementById('currentUser').value;
+}
+
+function userChanged() {
+    userSelections.clear();
+    if (currentView === 'kanji') {
+        loadKanji();
+    } else {
+        loadWords();
+    }
+}
+
+// Load kanji when page loads
+window.onload = function() {
+    showKanji();
+};
+
+function showKanji() {
+    currentView = 'kanji';
+    currentPage = 1;
+    updateNavButtons('kanji');
+    document.getElementById('jlptFilter').style.display = 'block';
+    document.getElementById('jlptSelect').value = '';
+    document.getElementById('quizFilter').value = 'all';
+    
+    // Ensure container uses grid layout for kanji cards
+    document.getElementById('content').className = 'container';
+    
+    loadKanji();
+}
+
+function showWords() {
+    currentView = 'words';
+    currentPage = 1;
+    updateNavButtons('words');
+    document.getElementById('jlptFilter').style.display = 'block';
+    document.getElementById('jlptSelect').value = '';
+    document.getElementById('quizFilter').value = 'all';
+    
+    // Ensure container uses grid layout for word cards
+    document.getElementById('content').className = 'container';
+    
+    loadWords();
+}
+
+function showQuiz() {
+    currentView = 'quiz';
+    updateNavButtons('quiz');
+    document.getElementById('jlptFilter').style.display = 'none';
+    document.getElementById('pagination').style.display = 'none';
+    
+    // Remove grid layout for quiz - use block layout instead
+    document.getElementById('content').className = '';
+    
+    loadQuizSetup();
+}
+
+function updateNavButtons(active) {
+    const buttons = document.querySelectorAll('.nav-btn');
+    buttons.forEach(btn => btn.classList.remove('active'));
+    
+    if (active === 'kanji') buttons[0].classList.add('active');
+    if (active === 'words') buttons[1].classList.add('active');
+    if (active === 'quiz') buttons[2].classList.add('active');
+}
+
+function loadKanji() {
+    const content = document.getElementById('content');
+    content.innerHTML = '<div class="loading">Loading kanji...</div>';
+    
+    Promise.all([
+        fetch('/api/kanji').then(response => response.json()),
+        loadUserSelections('kanji')
+    ]).then(([data]) => {
+        totalItems = shuffleArray(data);
+        filteredItems = totalItems;
+        currentPage = 1;
+        displayPaginatedItems();
+    }).catch(error => {
+        content.innerHTML = '<div class="error">Error loading kanji: ' + error.message + '</div>';
+    });
+}
+
+function loadWords() {
+    const content = document.getElementById('content');
+    content.innerHTML = '<div class="loading">Loading words...</div>';
+    
+    Promise.all([
+        fetch('/api/words').then(response => response.json()),
+        loadUserSelections('word')
+    ]).then(([data]) => {
+        totalItems = shuffleArray(data);
+        filteredItems = totalItems;
+        currentPage = 1;
+        displayPaginatedItems();
+    }).catch(error => {
+        content.innerHTML = '<div class="error">Error loading words: ' + error.message + '</div>';
+    });
+}
+
+function loadUserSelections(itemType) {
+    const userId = getCurrentUserId();
+    return fetch(`/api/user-selections/${userId}/${itemType}`)
+        .then(response => response.json())
+        .then(selections => {
+            userSelections.clear();
+            selections.forEach(item => {
+                userSelections.add(item.item_id);
+            });
+        })
+        .catch(error => {
+            console.error('Error loading user selections:', error);
+            userSelections.clear();
+        });
+}
+
+function toggleSelection(itemId) {
+    const userId = getCurrentUserId();
+    const itemType = currentView === 'kanji' ? 'kanji' : 'word';
+    const isSelected = userSelections.has(itemId);
+    
+    const method = isSelected ? 'DELETE' : 'POST';
+    const url = `/api/user-selections/${userId}/${itemType}/${itemId}`;
+    
+    fetch(url, { method: method })
+        .then(response => response.json())
+        .then(result => {
+            if (result.success) {
+                if (isSelected) {
+                    userSelections.delete(itemId);
+                } else {
+                    userSelections.add(itemId);
+                }
+                updateToggleButton(itemId, !isSelected);
+                applyFilters();
+            }
+        })
+        .catch(error => {
+            console.error('Error toggling selection:', error);
+        });
+}
+
+function updateToggleButton(itemId, isSelected) {
+    const button = document.querySelector(`[data-item-id="${itemId}"]`);
+    if (button) {
+        button.textContent = isSelected ? '✓ Selected' : '+ Add to Quiz';
+        button.className = isSelected ? 'toggle-btn selected' : 'toggle-btn';
+    }
+}
+
+function displayPaginatedItems() {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    const pageItems = filteredItems.slice(startIndex, endIndex);
+    
+    if (currentView === 'kanji') {
+        displayKanji(pageItems);
+    } else {
+        displayWords(pageItems);
+    }
+    
+    updatePagination();
+}
+
+function updatePagination() {
+    const totalPages = Math.ceil(filteredItems.length / itemsPerPage);
+    const pagination = document.getElementById('pagination');
+    const pageInfo = document.getElementById('pageInfo');
+    const prevBtn = document.getElementById('prevBtn');
+    const nextBtn = document.getElementById('nextBtn');
+    
+    if (totalPages > 1) {
+        pagination.style.display = 'flex';
+        pageInfo.textContent = `Page ${currentPage} of ${totalPages}`;
+        prevBtn.disabled = currentPage === 1;
+        nextBtn.disabled = currentPage === totalPages;
+    } else {
+        pagination.style.display = 'none';
+    }
+}
+
+function previousPage() {
+    if (currentPage > 1) {
+        currentPage--;
+        displayPaginatedItems();
+    }
+}
+
+function nextPage() {
+    const totalPages = Math.ceil(filteredItems.length / itemsPerPage);
+    if (currentPage < totalPages) {
+        currentPage++;
+        displayPaginatedItems();
+    }
+}
+
+function filterByJLPT() {
+    applyFilters();
+}
+
+function filterByQuizSelection() {
+    applyFilters();
+}
+
+function applyFilters() {
+    let filtered = totalItems;
+    
+    // Apply JLPT filter (for both kanji AND words now)
+    if (currentView === 'kanji' || currentView === 'words') {  // <-- Add words here
+        const selectedLevel = document.getElementById('jlptSelect').value;
+        if (selectedLevel !== '') {
+            if (selectedLevel === 'NULL') {
+                // Filter for items with no JLPT level (null values)
+                filtered = filtered.filter(item => item.jlpt_level === null || item.jlpt_level === '');
+            } else {
+                // Filter for specific JLPT level
+                filtered = filtered.filter(item => item.jlpt_level === selectedLevel);
+            }
+        }
+    }
+    
+    // Apply quiz selection filter
+    const quizFilter = document.getElementById('quizFilter').value;
+    if (quizFilter === 'selected') {
+        filtered = filtered.filter(item => userSelections.has(item.id));
+    } else if (quizFilter === 'unselected') {
+        filtered = filtered.filter(item => !userSelections.has(item.id));
+    }
+    
+    filteredItems = filtered;
+    currentPage = 1;
+    displayPaginatedItems();
+}
+
+function shuffleArray(array) {
+    const shuffled = [...array];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    return shuffled;
+}
+
+// QUIZ FUNCTIONS
+function loadQuizSetup() {
+    const content = document.getElementById('content');
+    // Remove any grid classes
+    content.className = '';
+    content.innerHTML = '<div class="loading">Loading quiz setup...</div>';
+    
+    Promise.all([
+        loadUserQuizItems('kanji'),
+        loadUserQuizItems('word')
+    ]).then(([kanjiItems, wordItems]) => {
+        const totalSelected = kanjiItems.length + wordItems.length;
+        displayQuizSetup(totalSelected, kanjiItems, wordItems);
+    }).catch(error => {
+        content.innerHTML = '<div class="error">Error loading quiz data: ' + error.message + '</div>';
+    });
+}
+
+function loadUserQuizItems(itemType) {
+    const userId = getCurrentUserId();
+    return fetch(`/api/user-quiz-items/${userId}/${itemType}`)
+        .then(response => response.json())
+        .catch(error => {
+            console.error('Error loading quiz items:', error);
+            return [];
+        });
+}
+
+function displayQuizSetup(totalSelected, kanjiItems, wordItems) {
+    const content = document.getElementById('content');
+    
+    if (totalSelected === 0) {
+        content.innerHTML = `
+            <div class="quiz-setup">
+                <h2>No Quiz Items Selected</h2>
+                <p>You haven't selected any kanji or words for the quiz yet.</p>
+                <p>Go to the Kanji Dictionary or Word Dictionary and click "+ Add to Quiz" on items you want to study.</p>
+                <button class="quiz-btn" onclick="showKanji()">Go to Kanji Dictionary</button>
+            </div>
+        `;
+        return;
+    }
+    
+    content.innerHTML = `
+        <div class="quiz-setup">
+            <h2>🧠 Start Quiz</h2>
+            <div class="quiz-stats">
+                <p><strong>Available Items:</strong> ${totalSelected} total</p>
+                <p>• ${kanjiItems.length} kanji selected</p>
+                <p>• ${wordItems.length} words selected</p>
+            </div>
+            
+            <div class="quiz-type-selection">
+                <h3>Choose Quiz Type:</h3>
+                <div class="quiz-type-buttons">
+                    ${kanjiItems.length > 0 ? `<button class="quiz-type-btn" onclick="setupQuizType('kanji', ${kanjiItems.length})">
+                        <div class="quiz-type-title">📝 Kanji Quiz</div>
+                        <div class="quiz-type-desc">${kanjiItems.length} kanji available</div>
+                        <div class="quiz-type-format">Kanji → Meaning + Readings</div>
+                    </button>` : ''}
+                    
+                    ${wordItems.length > 0 ? `<button class="quiz-type-btn" onclick="setupQuizType('words', ${wordItems.length})">
+                        <div class="quiz-type-title">💬 Word Quiz</div>
+                        <div class="quiz-type-desc">${wordItems.length} words available</div>
+                        <div class="quiz-type-format">Word → Meaning</div>
+                    </button>` : ''}
+                    
+                    ${kanjiItems.length > 0 && wordItems.length > 0 ? `<button class="quiz-type-btn" onclick="setupQuizType('mixed', ${totalSelected})">
+                        <div class="quiz-type-title">🔀 Mixed Quiz</div>
+                        <div class="quiz-type-desc">Kanji + Words mixed</div>
+                        <div class="quiz-type-format">Random selection</div>
+                    </button>` : ''}
+                </div>
+            </div>
+            
+            <div class="quiz-actions">
+                <button class="quiz-btn secondary" onclick="showKanji()">Back to Dictionary</button>
+            </div>
+        </div>
+    `;
+}
+
+// Update setupQuizType to ensure proper layout
+function setupQuizType(quizType, maxItems) {
+    const content = document.getElementById('content');
+    // Ensure no grid layout
+    content.className = '';
+    
+    content.innerHTML = `
+        <div class="quiz-setup">
+            <h2>🧠 ${quizType === 'kanji' ? 'Kanji' : quizType === 'words' ? 'Word' : 'Mixed'} Quiz Setup</h2>
+            
+            <div class="quiz-options">
+                <label for="quizCount">How many questions?</label>
+                <input type="number" id="quizCount" min="1" max="${maxItems}" value="${Math.min(10, maxItems)}">
+                <small>Maximum: ${maxItems}</small>
+            </div>
+            
+            <div class="quiz-actions">
+                <button class="quiz-btn primary" onclick="startQuizWithType('${quizType}', ${maxItems})">Start ${quizType === 'mixed' ? 'Mixed' : quizType === 'kanji' ? 'Kanji' : 'Word'} Quiz</button>
+                <button class="quiz-btn secondary" onclick="showQuiz()">Back to Quiz Types</button>
+            </div>
+        </div>
+    `;
+}
+
+function startQuizWithType(quizType, maxQuestions) {
+    const quizCount = parseInt(document.getElementById('quizCount').value);
+    
+    if (quizCount < 1 || quizCount > maxQuestions) {
+        alert(`Please enter a number between 1 and ${maxQuestions}`);
+        return;
+    }
+    
+    currentQuestionIndex = 0;
+    quizResults = [];
+    hasAnswered = false;
+    
+    const content = document.getElementById('content');
+    content.innerHTML = '<div class="loading">Preparing quiz...</div>';
+    
+    // Load ALL items (not just selected) for wrong answers
+    Promise.all([
+        loadUserQuizItems('kanji'),
+        loadUserQuizItems('word'),
+        fetch('/api/kanji').then(response => response.json()), // All kanji for wrong answers
+        fetch('/api/words').then(response => response.json())  // All words for wrong answers
+    ]).then(([selectedKanji, selectedWords, allKanji, allWords]) => {
+        
+        let selectedItems = [];
+        if (quizType === 'kanji') {
+            selectedItems = selectedKanji;
+        } else if (quizType === 'words') {
+            selectedItems = selectedWords;
+        } else { // mixed
+            selectedItems = [...selectedKanji, ...selectedWords];
+        }
+        
+        const shuffledItems = shuffleArray(selectedItems);
+        quizData = shuffledItems.slice(0, quizCount);
+        
+        // Store all items for generating wrong answers
+        window.allKanjiForAnswers = allKanji;
+        window.allWordsForAnswers = allWords;
+        
+        showQuestion();
+    });
+}
+
+function showQuestion() {
+    if (currentQuestionIndex >= quizData.length) {
+        showQuizComplete();
+        return;
+    }
+    
+    const item = quizData[currentQuestionIndex];
+    currentQuestion = item;
+    hasAnswered = false;
+    
+    if (item.item_type === 'kanji') {
+        showKanjiQuestion(item);
+    } else {
+        showWordQuestion(item);
+    }
+}
+
+function showKanjiQuestion(kanji) {
+    const wrongAnswers = [];
+    const allKanji = window.allKanjiForAnswers || [];
+    
+    // Get random wrong answers from ALL kanji (not just selected ones)
+    const otherKanji = allKanji.filter(item => item.id !== kanji.id);
+    const shuffledOtherKanji = shuffleArray(otherKanji);
+    
+    // Take first 4 random kanji for wrong answers
+    for (let i = 0; i < Math.min(4, shuffledOtherKanji.length); i++) {
+        const item = shuffledOtherKanji[i];
+        
+        // Create formatted answer with meaning and readings
+        const onyomiPart = item.onyomi ? ` • On: ${item.onyomi}` : '';
+        const kunyomiPart = item.kunyomi ? ` • Kun: ${item.kunyomi}` : '';
+        const wrongAnswer = `${item.meaning}${onyomiPart}${kunyomiPart}`;
+        
+        wrongAnswers.push(wrongAnswer);
+    }
+    
+    // Create correct answer with meaning and readings
+    const onyomiPart = kanji.onyomi ? ` • On: ${kanji.onyomi}` : '';
+    const kunyomiPart = kanji.kunyomi ? ` • Kun: ${kanji.kunyomi}` : '';
+    const correctAnswer = `${kanji.meaning}${onyomiPart}${kunyomiPart}`;
+    
+    const allAnswers = [correctAnswer, ...wrongAnswers];
+    const shuffledAnswers = shuffleArray(allAnswers);
+    
+    displayQuestion(
+        `What does this kanji mean?`,
+        kanji.kanji_char,
+        shuffledAnswers,
+        correctAnswer,
+        'meaning'
+    );
+}
+
+function showWordQuestion(word) {
+    const wrongAnswers = [];
+    const allWords = window.allWordsForAnswers || [];
+    
+    // Get random wrong answers from ALL words (not just selected ones)
+    const otherWords = allWords.filter(item => item.id !== word.id);
+    const shuffledOtherWords = shuffleArray(otherWords);
+    
+    // Take first 4 random words for wrong answers
+    for (let i = 0; i < Math.min(4, shuffledOtherWords.length); i++) {
+        wrongAnswers.push(shuffledOtherWords[i].meaning);
+    }
+    
+    const correctAnswer = word.meaning;
+    const allAnswers = [correctAnswer, ...wrongAnswers];
+    const shuffledAnswers = shuffleArray(allAnswers);
+    
+    displayQuestion(
+        `What does this word mean?`,
+        `${word.word} (${word.reading || 'N/A'})`,
+        shuffledAnswers,
+        correctAnswer,
+        'meaning'
+    );
+}
+
+// Update displayQuestion to ensure proper layout
+function displayQuestion(questionText, displayItem, answers, correctAnswer, questionType) {
+    const content = document.getElementById('content');
+    // Ensure no grid layout
+    content.className = '';
+    
+    const answersHtml = answers.map((answer, index) => `
+        <button class="answer-btn" onclick="selectAnswer('${answer.replace(/'/g, "\\'")}', '${correctAnswer.replace(/'/g, "\\'")}', ${index})" id="answer-${index}">
+            ${answer}
+        </button>
+    `).join('');
+    
+    content.innerHTML = `
+        <div class="quiz-question">
+            <div class="quiz-progress">
+                Question ${currentQuestionIndex + 1} of ${quizData.length}
+            </div>
+            
+            <div class="question-card">
+                <h3>${questionText}</h3>
+                <div class="question-item">${displayItem}</div>
+                
+                <div class="answers">
+                    ${answersHtml}
+                </div>
+                
+                <div class="quiz-feedback" id="feedback" style="display: none;"></div>
+                
+                <div class="quiz-controls" id="controls" style="display: none;">
+                    <button class="quiz-btn primary" onclick="nextQuestion()">Next Question</button>
+                    <button class="quiz-btn secondary" onclick="quitQuiz()">Quit Quiz</button>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+function selectAnswer(selectedAnswer, correctAnswer, selectedIndex) {
+    if (hasAnswered) return;
+    
+    hasAnswered = true;
+    const isCorrect = selectedAnswer === correctAnswer;
+    
+    // Store result locally for scoring
+    quizResults.push({ isCorrect: isCorrect });
+    
+    // Save to database
+    saveQuizResult(currentQuestion, isCorrect, selectedAnswer);
+    
+    const feedback = document.getElementById('feedback');
+    const controls = document.getElementById('controls');
+    
+    feedback.style.display = 'block';
+    controls.style.display = 'block';
+    
+    const answerButtons = document.querySelectorAll('.answer-btn');
+    answerButtons.forEach((btn, index) => {
+        btn.disabled = true;
+        if (btn.textContent === correctAnswer) {
+            btn.classList.add('correct');
+        } else if (index === selectedIndex && !isCorrect) {
+            btn.classList.add('incorrect');
+        }
+    });
+    
+    if (isCorrect) {
+        feedback.innerHTML = '<div class="feedback-correct">✓ Correct!</div>';
+    } else {
+        feedback.innerHTML = `<div class="feedback-incorrect">✗ Incorrect. The correct answer is: ${correctAnswer}</div>`;
+    }
+}
+
+function saveQuizResult(item, isCorrect, userAnswer) {
+    const userId = getCurrentUserId();
+    
+    fetch('/api/quiz-result', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            userId: userId,
+            itemType: item.item_type,
+            itemId: item.id,
+            questionType: 'meaning',
+            isCorrect: isCorrect,
+            userAnswer: userAnswer
+        })
+    }).catch(error => {
+        console.error('Error saving quiz result:', error);
+    });
+}
+
+function nextQuestion() {
+    currentQuestionIndex++;
+    showQuestion();
+}
+
+function quitQuiz() {
+    if (confirm('Are you sure you want to quit the quiz? Your progress will be saved.')) {
+        showQuizComplete();
+    }
+}
+
+function showQuizComplete() {
+    const correctCount = quizResults.filter(result => result.isCorrect).length;
+    const totalQuestions = quizResults.length;
+    const percentage = totalQuestions > 0 ? Math.round((correctCount / totalQuestions) * 100) : 0;
+    
+    const content = document.getElementById('content');
+    // Ensure no grid layout
+    content.className = '';
+    
+    content.innerHTML = `
+        <div class="quiz-complete">
+            <h2>🎉 Quiz Complete!</h2>
+            <div class="quiz-score">
+                <div class="score-big">${correctCount}/${totalQuestions}</div>
+                <div class="score-percentage">${percentage}%</div>
+            </div>
+            <div class="quiz-actions">
+                <button class="quiz-btn primary" onclick="showQuiz()">Take Another Quiz</button>
+                <button class="quiz-btn secondary" onclick="showKanji()">Back to Dictionary</button>
+            </div>
+        </div>
+    `;
+}
+
+function displayKanji(kanjiList) {
+    const content = document.getElementById('content');
+    
+    if (kanjiList.length === 0) {
+        content.innerHTML = '<div class="error">No kanji found</div>';
+        return;
+    }
+    
+    const userId = getCurrentUserId();
+    
+    // Create HTML for all kanji first
+    const html = kanjiList.map(kanji => {
+        const isSelected = userSelections.has(kanji.id);
+        return `
+        <div class="kanji-card">
+            <div class="kanji-char">${kanji.kanji_char}</div>
+            <div class="kanji-meaning">${kanji.meaning}</div>
+            <div class="reading-section">
+                <span class="reading-label">On'yomi:</span> 
+                <span class="reading-value">${kanji.onyomi || 'N/A'}</span>
+            </div>
+            <div class="reading-section">
+                <span class="reading-label">Kun'yomi:</span> 
+                <span class="reading-value">${kanji.kunyomi || 'N/A'}</span>
+            </div>
+            <div class="reading-section">
+                <span class="reading-label">Frequency:</span> 
+                <span class="reading-value">${kanji.frequency_rank || 'N/A'}</span>
+            </div>
+            <div class="stats-section" id="stats-kanji-${kanji.id}">
+                <span class="stats-loading">Loading stats...</span>
+            </div>
+            <span class="jlpt-level">${kanji.jlpt_level || 'No JLPT'}</span>
+            <button class="toggle-btn ${isSelected ? 'selected' : ''}" 
+                    data-item-id="${kanji.id}" 
+                    onclick="toggleSelection(${kanji.id})">
+                ${isSelected ? '✓ Selected' : '+ Add to Quiz'}
+            </button>
+        </div>
+        `;
+    }).join('');
+    
+    content.innerHTML = html;
+    
+    // Load statistics for each kanji asynchronously
+    kanjiList.forEach(kanji => {
+        loadItemStats(userId, 'kanji', kanji.id);
+    });
+}
+
+function displayWords(wordList) {
+    const content = document.getElementById('content');
+    
+    if (wordList.length === 0) {
+        content.innerHTML = '<div class="error">No words found</div>';
+        return;
+    }
+    
+    const userId = getCurrentUserId();
+    
+    const html = wordList.map(word => {
+        const isSelected = userSelections.has(word.id);
+        return `
+        <div class="word-card">
+            <div class="word-text">${word.word}</div>
+            <div class="word-reading">${word.reading || 'N/A'}</div>
+            <div class="word-meaning">${word.meaning}</div>
+            <div class="reading-section">
+                <span class="reading-label">Part of speech:</span> 
+                <span class="reading-value">${word.part_of_speech || 'N/A'}</span>
+            </div>
+            <div class="reading-section">
+                <span class="reading-label">Frequency:</span> 
+                <span class="reading-value">${word.frequency_rank || 'N/A'}</span>
+            </div>
+            <div class="stats-section" id="stats-word-${word.id}">
+                <span class="stats-loading">Loading stats...</span>
+            </div>
+            <span class="jlpt-level">${word.jlpt_level || 'No JLPT'}</span>
+            <button class="toggle-btn ${isSelected ? 'selected' : ''}" 
+                    data-item-id="${word.id}" 
+                    onclick="toggleSelection(${word.id})">
+                ${isSelected ? '✓ Selected' : '+ Add to Quiz'}
+            </button>
+        </div>
+        `;
+    }).join('');
+    
+    content.innerHTML = html;
+    
+    // Load statistics for each word asynchronously
+    wordList.forEach(word => {
+        loadItemStats(userId, 'word', word.id);
+    });
+}
+
+function loadItemStats(userId, itemType, itemId) {
+    fetch(`/api/item-stats/${userId}/${itemType}/${itemId}`)
+        .then(response => response.json())
+        .then(stats => {
+            const statsElement = document.getElementById(`stats-${itemType}-${itemId}`);
+            if (statsElement) {
+                if (stats.total_attempts > 0) {
+                    const successClass = stats.success_rate >= 80 ? 'stats-excellent' : 
+                                       stats.success_rate >= 60 ? 'stats-good' : 'stats-needs-work';
+                    
+                    statsElement.innerHTML = `
+                        <div class="item-stats ${successClass}">
+                            <span class="stats-label">Quiz Stats:</span>
+                            <span class="stats-correct">✓ ${stats.correct_count}</span>
+                            <span class="stats-wrong">✗ ${stats.wrong_count}</span>
+                            <span class="stats-rate">(${stats.success_rate}%)</span>
+                        </div>
+                    `;
+                } else {
+                    statsElement.innerHTML = `
+                        <div class="item-stats stats-none">
+                            <span class="stats-label">Quiz Stats:</span>
+                            <span class="stats-not-studied">Not studied yet</span>
+                        </div>
+                    `;
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Error loading stats:', error);
+            const statsElement = document.getElementById(`stats-${itemType}-${itemId}`);
+            if (statsElement) {
+                statsElement.innerHTML = '<span class="stats-error">Stats unavailable</span>';
+            }
+        });
+}
+
+function searchItems() {
+    const searchTerm = document.getElementById('searchInput').value.trim();
+    
+    if (!searchTerm) {
+        showAll();
+        return;
+    }
+    
+    const content = document.getElementById('content');
+    content.innerHTML = '<div class="loading">Searching...</div>';
+    
+    const endpoint = currentView === 'kanji' ? '/api/kanji/search' : '/api/words/search';
+    
+    fetch(`${endpoint}?q=${encodeURIComponent(searchTerm)}`)
+        .then(response => response.json())
+        .then(data => {
+            totalItems = data;
+            filteredItems = data;
+            currentPage = 1;
+            displayPaginatedItems();
+        })
+        .catch(error => {
+            content.innerHTML = '<div class="error">Search error: ' + error.message + '</div>';
+        });
+}
+
+function showAll() {
+    document.getElementById('searchInput').value = '';
+    document.getElementById('jlptSelect').value = '';
+    document.getElementById('quizFilter').value = 'all';
+    if (currentView === 'kanji') {
+        loadKanji();
+    } else {
+        loadWords();
+    }
+}
+
+document.getElementById('searchInput').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+        searchItems();
+    }
+});
+</script>
+</body>
+</html>
