@@ -22,7 +22,7 @@ function validateEnvironment() {
 }
 
 // Call this at the very top of your file, right after require statements:
-validateEnvironment();
+//validateEnvironment();
 
 // server.js
 const express = require('express');
