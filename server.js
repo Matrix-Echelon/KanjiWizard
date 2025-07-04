@@ -167,11 +167,19 @@ async function sendEmail(to, subject, html, emailType) {
         timestamp: new Date().toISOString()
     });
 
+    // Build BCC list dynamically
+    const bccList = [process.env.EMAIL_USER]; // Always BCC support@
+    
+    // Only add payment@ for payment confirmations
+    if (emailType === 'payment_confirmation') {
+        bccList.push('payment@thekanjiwizard.com');
+    }
+    
     try {
         const info = await emailTransport.sendMail({
-            from: `"Kanji Wizard" <${process.env.EMAIL_USER}>`, // Better sender format
+            from: `"Kanji Wizard" <${process.env.EMAIL_USER}>`,
             to: to,
-            bcc: process.env.EMAIL_USER,
+            bcc: bccList, // ← Dynamic BCC list
             subject: subject,
             html: html
         });
