@@ -1807,10 +1807,20 @@ function showPricing() {
                 
                 <div class="pricing-form">
                     <h4>🛒 Get Started Now</h4>
+                    
                     <div class="email-input-section">
-                        <label for="customerEmail">Enter your email address:</label>
+                        <label for="customerEmail">Email Address:</label>
                         <input type="email" id="customerEmail" placeholder="your@email.com" required>
-                        <small>We'll send your login credentials to this email</small>
+                        <small>We'll send your account confirmation to this email</small>
+                    </div>
+                    
+                    <div class="email-input-section">
+                        <label for="customerUsername">Choose Your Username:</label>
+                        <input type="text" id="customerUsername" placeholder="your_username" required 
+                               minlength="3" maxlength="20" pattern="[a-zA-Z0-9_]+" 
+                               title="Username must be 3-20 characters, letters, numbers, and underscores only">
+                        <small>3-20 characters, letters, numbers, and underscores only</small>
+                        <div id="usernameStatus" class="username-status"></div>
                     </div>
                     
                     <div class="pricing-cta">
@@ -1833,12 +1843,93 @@ function showPricing() {
             </div>
         </div>
     `;
+    
+    // Add username validation
+    setupUsernameValidation();
 }
+
+function setupUsernameValidation() {
+    const usernameInput = document.getElementById('customerUsername');
+    const statusDiv = document.getElementById('usernameStatus');
+    let debounceTimer;
+    
+    usernameInput.addEventListener('input', function() {
+        const username = this.value.trim();
+        
+        // Clear previous timer
+        clearTimeout(debounceTimer);
+        
+        // Reset status
+        statusDiv.innerHTML = '';
+        statusDiv.className = 'username-status';
+        
+        if (username.length < 3) {
+            if (username.length > 0) {
+                statusDiv.innerHTML = '⚠️ Username must be at least 3 characters';
+                statusDiv.className = 'username-status error';
+            }
+            return;
+        }
+        
+        if (username.length > 20) {
+            statusDiv.innerHTML = '⚠️ Username must be 20 characters or less';
+            statusDiv.className = 'username-status error';
+            return;
+        }
+        
+        if (!/^[a-zA-Z0-9_]+$/.test(username)) {
+            statusDiv.innerHTML = '⚠️ Only letters, numbers, and underscores allowed';
+            statusDiv.className = 'username-status error';
+            return;
+        }
+        
+        // Show checking status
+        statusDiv.innerHTML = '🔍 Checking availability...';
+        statusDiv.className = 'username-status checking';
+        
+        // Debounce the API call
+        debounceTimer = setTimeout(() => {
+            checkUsernameAvailability(username);
+        }, 500);
+    });
+}
+
+async function checkUsernameAvailability(username) {
+    const statusDiv = document.getElementById('usernameStatus');
+    
+    try {
+        const response = await fetch('/api/check-username', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ username: username })
+        });
+        
+        const data = await response.json();
+        
+        if (data.available) {
+            statusDiv.innerHTML = '✅ Username available';
+            statusDiv.className = 'username-status available';
+        } else {
+            statusDiv.innerHTML = '❌ Username already taken';
+            statusDiv.className = 'username-status taken';
+        }
+    } catch (error) {
+        console.error('Error checking username:', error);
+        statusDiv.innerHTML = '⚠️ Could not check availability';
+        statusDiv.className = 'username-status error';
+    }
+}
+
+
 
 async function startCheckout() {
     const emailInput = document.getElementById('customerEmail');
+    const usernameInput = document.getElementById('customerUsername');
     const checkoutBtn = document.getElementById('checkoutBtn');
     const email = emailInput.value.trim();
+    const username = usernameInput.value.trim();
     
     // Validate email
     if (!email) {
@@ -1853,6 +1944,33 @@ async function startCheckout() {
         return;
     }
     
+    // Validate username
+    if (!username) {
+        alert('Please choose a username');
+        usernameInput.focus();
+        return;
+    }
+    
+    if (username.length < 3 || username.length > 20) {
+        alert('Username must be between 3 and 20 characters');
+        usernameInput.focus();
+        return;
+    }
+    
+    if (!/^[a-zA-Z0-9_]+$/.test(username)) {
+        alert('Username can only contain letters, numbers, and underscores');
+        usernameInput.focus();
+        return;
+    }
+    
+    // Check if username is available
+    const statusDiv = document.getElementById('usernameStatus');
+    if (!statusDiv.classList.contains('available')) {
+        alert('Please choose an available username');
+        usernameInput.focus();
+        return;
+    }
+    
     // Disable button and show loading
     checkoutBtn.disabled = true;
     checkoutBtn.innerHTML = '⏳ Redirecting to checkout...';
@@ -1863,7 +1981,10 @@ async function startCheckout() {
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ email: email })
+            body: JSON.stringify({ 
+                email: email,
+                username: username 
+            })
         });
         
         const data = await response.json();
