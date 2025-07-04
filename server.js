@@ -122,7 +122,7 @@ function ensureTablesExist() {
 }
 
 // Email configuration
-const emailTransporter = nodemailer.createTransporter({
+const emailTransport = nodemailer.createTransporter({
     host: 'smtp.purelymail.com',
     port: 587,
     secure: false, // true for 465, false for other ports
