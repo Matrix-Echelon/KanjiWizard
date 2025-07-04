@@ -36,6 +36,8 @@ const crypto = require('crypto');
 const app = express();
 const port = process.env.PORT || 3000;
 
+app.set('trust proxy', true);
+
 // Connect to Database
 const dbConfig = {
     host: process.env.MYSQLHOST || 'localhost',
@@ -131,11 +133,23 @@ const emailTransport = nodemailer.createTransport({
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS
     },
-    // Optional: Add these for better reliability
+    // 🔧 Enhanced TLS configuration for better compatibility
     tls: {
-        ciphers: 'SSLv3'
+        ciphers: 'SSLv3',
+        rejectUnauthorized: false // Only for debugging - remove for production
+    },
+    debug: true, // Enable debug logs
+    logger: true // Enable detailed logging
+});
+
+emailTransport.verify((error, success) => {
+    if (error) {
+        console.error('❌ Email configuration error:', error);
+    } else {
+        console.log('✅ Email server connection verified');
     }
 });
+
 
 // Utility function to generate random credentials
 function generateCredentials() {
@@ -146,29 +160,53 @@ function generateCredentials() {
 
 // Utility function to send emails
 async function sendEmail(to, subject, html, emailType) {
+    console.log('📧 Attempting to send email:', {
+        to: to,
+        subject: subject,
+        type: emailType,
+        timestamp: new Date().toISOString()
+    });
+
     try {
-        await emailTransporter.sendMail({
-            from: process.env.EMAIL_USER,
+        const info = await emailTransport.sendMail({
+            from: `"Kanji Wizard" <${process.env.EMAIL_USER}>`, // Better sender format
             to: to,
             subject: subject,
             html: html
         });
         
+        console.log('✅ Email sent successfully:', {
+            to: to,
+            messageId: info.messageId,
+            response: info.response
+        });
+        
         // Log successful email
         db.query(
             'INSERT INTO email_logs (email, email_type, status) VALUES (?, ?, ?)',
-            [to, emailType, 'sent']
+            [to, emailType, 'sent'],
+            (err) => {
+                if (err) console.error('Error logging email success:', err);
+            }
         );
         
-        console.log(`✅ Email sent to ${to}: ${subject}`);
         return true;
     } catch (error) {
-        console.error('❌ Email send failed:', error);
+        console.error('❌ Email send failed:', {
+            to: to,
+            error: error.message,
+            code: error.code,
+            command: error.command,
+            stack: error.stack
+        });
         
-        // Log failed email
+        // Log failed email with detailed error info
         db.query(
             'INSERT INTO email_logs (email, email_type, status, details) VALUES (?, ?, ?, ?)',
-            [to, emailType, 'failed', error.message]
+            [to, emailType, 'failed', `${error.code}: ${error.message}`],
+            (err) => {
+                if (err) console.error('Error logging email failure:', err);
+            }
         );
         
         return false;
@@ -239,7 +277,8 @@ const rateLimit = require('express-rate-limit');
 const searchLimiter = rateLimit({
     windowMs: 1 * 60 * 1000,
     max: 30,
-    message: { error: 'Too many search requests, please try again later' }
+    message: { error: 'Too many search requests, please try again later' },
+    trustProxy: true
 });
 
 app.use('/api/*/search', searchLimiter);
@@ -248,7 +287,8 @@ app.use('/api/*/search', searchLimiter);
 const paymentLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
     max: 15, // limit each IP to 3 payment attempts per windowMs
-    message: { error: 'Too many payment attempts, please try again later' }
+    message: { error: 'Too many payment attempts, please try again later' },
+    trustProxy: true 
 });
 
 // Authentication middleware
@@ -554,6 +594,32 @@ app.get('/api/payment-status/:sessionId', async (req, res) => {
     } catch (error) {
         console.error('Error retrieving payment status:', error);
         res.status(500).json({ error: 'Failed to retrieve payment status' });
+    }
+});
+
+app.get('/api/test-email', async (req, res) => {
+    console.log('🧪 Testing email configuration...');
+    
+    try {
+        const testEmail = await sendEmail(
+            process.env.EMAIL_USER, // Send to yourself for testing
+            'Test Email from Kanji Wizard',
+            '<h1>Test Email</h1><p>If you receive this, email is working!</p>',
+            'test'
+        );
+        
+        res.json({
+            success: testEmail,
+            message: testEmail ? 'Test email sent successfully' : 'Test email failed',
+            timestamp: new Date().toISOString()
+        });
+    } catch (error) {
+        console.error('Email test error:', error);
+        res.status(500).json({
+            success: false,
+            error: error.message,
+            timestamp: new Date().toISOString()
+        });
     }
 });
 
