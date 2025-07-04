@@ -1952,20 +1952,6 @@ function showPricing() {
                 </div>
             </div>
             
-            <div class="newsletter-signup">
-                <h3>📬 Stay Updated</h3>
-                <p>Be the first to know when new features launch!</p>
-                <div class="newsletter-form">
-                    <input type="email" id="newsletterEmail" placeholder="your@email.com" 
-                           value="${isAuthenticated ? currentUser.email : ''}" 
-                           ${isAuthenticated ? 'readonly' : ''}>
-                    <button class="newsletter-btn" onclick="subscribeNewsletter()">
-                        ${isAuthenticated ? '✅ You\'re Subscribed!' : '🔔 Notify Me'}
-                    </button>
-                </div>
-                ${isAuthenticated ? '<small>Updates will be sent to your account email</small>' : ''}
-            </div>
-            
             <div class="coming-soon-actions">
                 <button class="quiz-btn primary" onclick="showQuiz()">Try Current Features</button>
                 <button class="quiz-btn secondary" onclick="showAbout()">Learn More About Us</button>
