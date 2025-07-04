@@ -2322,3 +2322,343 @@ body {
         font-size: 16px; /* Prevent zoom on iOS */
     }
 }
+
+/* Coming Soon Page Styles */
+.coming-soon-page {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 40px;
+    background: white;
+    border-radius: 15px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    text-align: center;
+}
+
+.coming-soon-page h2 {
+    color: #4a90e2;
+    margin-bottom: 40px;
+    font-size: 28px;
+    border-bottom: 3px solid #4a90e2;
+    padding-bottom: 15px;
+}
+
+/* Hero Section */
+.coming-soon-hero {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 50px 30px;
+    border-radius: 15px;
+    margin-bottom: 50px;
+    position: relative;
+    overflow: hidden;
+}
+
+.rocket-animation {
+    font-size: 80px;
+    margin-bottom: 20px;
+    animation: rocket-float 3s ease-in-out infinite;
+}
+
+@keyframes rocket-float {
+    0%, 100% { transform: translateY(0px) rotate(-5deg); }
+    50% { transform: translateY(-20px) rotate(5deg); }
+}
+
+.coming-soon-hero h3 {
+    margin: 0 0 15px 0;
+    font-size: 32px;
+}
+
+.coming-soon-hero p {
+    font-size: 18px;
+    margin: 0;
+    opacity: 0.9;
+}
+
+/* Features Preview Grid */
+.features-preview {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 25px;
+    margin-bottom: 50px;
+}
+
+.feature-card {
+    background: #f8f9fa;
+    padding: 30px 25px;
+    border-radius: 15px;
+    border: 2px solid #e9ecef;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.feature-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 25px rgba(74, 144, 226, 0.15);
+    border-color: #4a90e2;
+}
+
+.feature-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, #4a90e2, #28a745, #ffc107, #dc3545);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.feature-card:hover::before {
+    opacity: 1;
+}
+
+.feature-icon {
+    font-size: 50px;
+    margin-bottom: 20px;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));
+}
+
+.feature-card h4 {
+    color: #333;
+    margin-bottom: 15px;
+    font-size: 20px;
+}
+
+.feature-card p {
+    color: #666;
+    line-height: 1.6;
+    margin-bottom: 20px;
+}
+
+.eta {
+    background: linear-gradient(135deg, #28a745, #20c997);
+    color: white;
+    padding: 8px 15px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: bold;
+    display: inline-block;
+}
+
+/* Feedback Section */
+.feedback-section {
+    background: #f8f9fa;
+    padding: 40px 30px;
+    border-radius: 15px;
+    margin-bottom: 40px;
+    border-left: 5px solid #4a90e2;
+}
+
+.feedback-section h3 {
+    color: #333;
+    margin-bottom: 15px;
+    font-size: 24px;
+}
+
+.feedback-section p {
+    color: #666;
+    margin-bottom: 25px;
+    font-size: 16px;
+}
+
+.feedback-actions {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.feedback-btn {
+    padding: 12px 25px;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-decoration: none;
+    display: inline-block;
+}
+
+.feedback-btn:first-child {
+    background: linear-gradient(135deg, #4a90e2, #357abd);
+    color: white;
+}
+
+.feedback-btn:first-child:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(74, 144, 226, 0.3);
+}
+
+.feedback-btn.secondary {
+    background: #6c757d;
+    color: white;
+}
+
+.feedback-btn.secondary:hover {
+    background: #5a6268;
+    transform: translateY(-1px);
+}
+
+/* Newsletter Signup */
+.newsletter-signup {
+    background: linear-gradient(135deg, #28a745, #20c997);
+    color: white;
+    padding: 40px 30px;
+    border-radius: 15px;
+    margin-bottom: 40px;
+}
+
+.newsletter-signup h3 {
+    margin-bottom: 15px;
+    font-size: 24px;
+}
+
+.newsletter-signup p {
+    margin-bottom: 25px;
+    opacity: 0.9;
+}
+
+.newsletter-form {
+    display: flex;
+    gap: 15px;
+    max-width: 400px;
+    margin: 0 auto 15px auto;
+    flex-wrap: wrap;
+}
+
+.newsletter-form input[type="email"] {
+    flex: 1;
+    padding: 12px 15px;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    min-width: 200px;
+}
+
+.newsletter-form input[type="email"]:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(255,255,255,0.3);
+}
+
+.newsletter-btn {
+    padding: 12px 20px;
+    background: white;
+    color: #28a745;
+    border: none;
+    border-radius: 8px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    white-space: nowrap;
+}
+
+.newsletter-btn:hover:not(:disabled) {
+    background: #f8f9fa;
+    transform: translateY(-1px);
+}
+
+.newsletter-btn:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+.newsletter-signup small {
+    opacity: 0.8;
+    font-style: italic;
+}
+
+/* Actions */
+.coming-soon-actions {
+    text-align: center;
+    margin-top: 40px;
+    padding-top: 30px;
+    border-top: 2px solid #e9ecef;
+}
+
+.coming-soon-actions .quiz-btn {
+    margin: 0 10px 10px 10px;
+}
+
+/* Modal Enhancements for Suggestions */
+.modal-field textarea {
+    width: 100%;
+    padding: 12px;
+    border: 2px solid #ddd;
+    border-radius: 8px;
+    font-size: 16px;
+    font-family: Arial, sans-serif;
+    resize: vertical;
+    box-sizing: border-box;
+}
+
+.modal-field textarea:focus {
+    outline: none;
+    border-color: #4a90e2;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .coming-soon-page {
+        padding: 25px 20px;
+        margin: 0 10px;
+    }
+    
+    .features-preview {
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+    
+    .feature-card {
+        padding: 25px 20px;
+    }
+    
+    .rocket-animation {
+        font-size: 60px;
+    }
+    
+    .coming-soon-hero h3 {
+        font-size: 24px;
+    }
+    
+    .coming-soon-hero p {
+        font-size: 16px;
+    }
+    
+    .feedback-actions {
+        flex-direction: column;
+        align-items: center;
+    }
+    
+    .feedback-btn {
+        width: 100%;
+        max-width: 250px;
+    }
+    
+    .newsletter-form {
+        flex-direction: column;
+        align-items: center;
+    }
+    
+    .newsletter-form input[type="email"] {
+        width: 100%;
+        max-width: 300px;
+    }
+    
+    .newsletter-btn {
+        width: 100%;
+        max-width: 300px;
+    }
+    
+    .coming-soon-actions .quiz-btn {
+        display: block;
+        width: 100%;
+        margin: 5px 0;
+        max-width: 250px;
+        margin-left: auto;
+        margin-right: auto;
+    }
+}
