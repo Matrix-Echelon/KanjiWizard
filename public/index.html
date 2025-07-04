@@ -231,6 +231,7 @@ function showMainApp() {
             <button class="nav-btn" onclick="showQuiz()">Quiz</button>
             ${isAuthenticated ? '<button class="nav-btn" onclick="showProfile()">Profile</button>' : ''}
             ${!isAuthenticated ? '<button class="nav-btn" onclick="showPricing()">Pricing</button>' : ''}
+            <button class="nav-btn" onclick="showComingSoon()">Coming Soon</button>
             <button class="nav-btn" onclick="showAbout()">About</button>
             <button class="nav-btn" onclick="showSources()">Sources</button>
         </div>
@@ -494,6 +495,10 @@ function updateNavButtons(active) {
     if (active === 'pricing') {
         const pricingBtn = Array.from(buttons).find(btn => btn.textContent === 'Pricing');
         if (pricingBtn) pricingBtn.classList.add('active');
+    }
+    if (active === 'coming-soon') {
+        const comingSoonBtn = Array.from(buttons).find(btn => btn.textContent === 'Coming Soon');
+        if (comingSoonBtn) comingSoonBtn.classList.add('active');
     }
     if (active === 'about') {
         const aboutBtn = Array.from(buttons).find(btn => btn.textContent === 'About');
@@ -1847,6 +1852,238 @@ function showPricing() {
     
     // Add username validation
     setupUsernameValidation();
+}
+
+    function showComingSoon() {
+    currentView = 'coming-soon';
+    updateNavButtons('coming-soon');
+    
+    // Hide all filters and search bar on Coming Soon page
+    document.getElementById('jlptFilter').style.display = 'none';
+    document.getElementById('sortFilter').style.display = 'none';
+    if (document.getElementById('quizFilter')) {
+        document.getElementById('quizFilter').parentElement.style.display = 'none';
+    }
+    document.querySelector('.search-box').style.display = 'none';
+    document.getElementById('pagination').style.display = 'none';
+    
+    // Remove grid layout for coming soon page
+    document.getElementById('content').className = '';
+    
+    const content = document.getElementById('content');
+    content.innerHTML = `
+        <div class="coming-soon-page">
+            <h2>🚀 Coming Soon to Kanji Wizard</h2>
+            
+            <div class="coming-soon-hero">
+                <div class="rocket-animation">🚀</div>
+                <h3>Exciting New Features in Development!</h3>
+                <p>We're constantly working to make your Japanese learning experience even better.</p>
+            </div>
+            
+            <div class="features-preview">
+                <div class="feature-card">
+                    <div class="feature-icon">📱</div>
+                    <h4>Mobile App</h4>
+                    <p>Take your Japanese learning on the go with our dedicated mobile apps for iOS and Android.</p>
+                    <div class="eta">ETA: Q2 2025</div>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">🎙️</div>
+                    <h4>Audio Pronunciation</h4>
+                    <p>Listen to native Japanese pronunciation for all kanji readings and vocabulary words.</p>
+                    <div class="eta">ETA: Q1 2025</div>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">💬</div>
+                    <h4>Sentence Examples</h4>
+                    <p>See real-world usage examples for every kanji and vocabulary word in context.</p>
+                    <div class="eta">ETA: Q1 2025</div>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">🏆</div>
+                    <h4>Achievement System</h4>
+                    <p>Earn badges and track milestones as you progress through your Japanese journey.</p>
+                    <div class="eta">ETA: Q2 2025</div>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">🔥</div>
+                    <h4>Streak Tracking</h4>
+                    <p>Build daily study habits with streak counters and reminder notifications.</p>
+                    <div class="eta">ETA: Q1 2025</div>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">📚</div>
+                    <h4>Study Decks</h4>
+                    <p>Create and share custom study decks with other learners in the community.</p>
+                    <div class="eta">ETA: Q3 2025</div>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">🤖</div>
+                    <h4>AI Study Assistant</h4>
+                    <p>Get personalized study recommendations based on your learning patterns and weak areas.</p>
+                    <div class="eta">ETA: Q3 2025</div>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">✍️</div>
+                    <h4>Handwriting Practice</h4>
+                    <p>Practice writing kanji with stroke order guidance and real-time feedback.</p>
+                    <div class="eta">ETA: Q2 2025</div>
+                </div>
+            </div>
+            
+            <div class="feedback-section">
+                <h3>💡 Have Ideas?</h3>
+                <p>We'd love to hear what features you'd like to see next!</p>
+                <div class="feedback-actions">
+                    <a href="mailto:support@thekanjiwizard.com?subject=Feature Request" class="feedback-btn">
+                        📧 Send Feedback
+                    </a>
+                    <button class="feedback-btn secondary" onclick="showContactModal()">
+                        💬 Quick Suggestion
+                    </button>
+                </div>
+            </div>
+            
+            <div class="newsletter-signup">
+                <h3>📬 Stay Updated</h3>
+                <p>Be the first to know when new features launch!</p>
+                <div class="newsletter-form">
+                    <input type="email" id="newsletterEmail" placeholder="your@email.com" 
+                           value="${isAuthenticated ? currentUser.email : ''}" 
+                           ${isAuthenticated ? 'readonly' : ''}>
+                    <button class="newsletter-btn" onclick="subscribeNewsletter()">
+                        ${isAuthenticated ? '✅ You\'re Subscribed!' : '🔔 Notify Me'}
+                    </button>
+                </div>
+                ${isAuthenticated ? '<small>Updates will be sent to your account email</small>' : ''}
+            </div>
+            
+            <div class="coming-soon-actions">
+                <button class="quiz-btn primary" onclick="showQuiz()">Try Current Features</button>
+                <button class="quiz-btn secondary" onclick="showAbout()">Learn More About Us</button>
+            </div>
+        </div>
+    `;
+}
+
+// Add this function for the contact modal
+function showContactModal() {
+    // Create modal if it doesn't exist
+    let modal = document.getElementById('contactModal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'contactModal';
+        modal.className = 'modal';
+        modal.innerHTML = `
+            <div class="modal-content">
+                <span class="close" onclick="closeContactModal()">&times;</span>
+                <div class="modal-header">
+                    <h2>💡 Quick Suggestion</h2>
+                    <p>What feature would you like to see in Kanji Wizard?</p>
+                </div>
+                
+                <form id="suggestionForm" onsubmit="handleSuggestion(event)">
+                    <div class="modal-field">
+                        <label for="suggestionText">Your Idea:</label>
+                        <textarea id="suggestionText" rows="4" placeholder="I'd love to see..." required></textarea>
+                    </div>
+                    
+                    <div class="modal-field">
+                        <label for="suggestionEmail">Email (optional):</label>
+                        <input type="email" id="suggestionEmail" placeholder="your@email.com" 
+                               value="${isAuthenticated ? currentUser.email : ''}">
+                    </div>
+                    
+                    <div id="suggestionMessage"></div>
+                    
+                    <div class="modal-actions">
+                        <button type="submit" class="modal-btn primary" id="suggestionBtn">
+                            Send Suggestion
+                        </button>
+                        <button type="button" class="modal-btn secondary" onclick="closeContactModal()">
+                            Cancel
+                        </button>
+                    </div>
+                </form>
+            </div>
+        `;
+        document.body.appendChild(modal);
+    }
+    
+    modal.style.display = 'block';
+    
+    // Close modal when clicking outside
+    modal.onclick = function(event) {
+        if (event.target === modal) {
+            closeContactModal();
+        }
+    };
+}
+
+function closeContactModal() {
+    const modal = document.getElementById('contactModal');
+    if (modal) {
+        modal.style.display = 'none';
+        document.getElementById('suggestionForm').reset();
+        document.getElementById('suggestionMessage').innerHTML = '';
+    }
+}
+
+function handleSuggestion(event) {
+    event.preventDefault();
+    
+    const suggestion = document.getElementById('suggestionText').value;
+    const email = document.getElementById('suggestionEmail').value;
+    const messageDiv = document.getElementById('suggestionMessage');
+    const submitBtn = document.getElementById('suggestionBtn');
+    
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Sending...';
+    
+    // For now, just show success (you can add backend endpoint later)
+    setTimeout(() => {
+        messageDiv.innerHTML = '<div class="message success">Thank you for your suggestion! We\'ll consider it for future updates.</div>';
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Send Suggestion';
+        
+        setTimeout(() => {
+            closeContactModal();
+        }, 2000);
+    }, 1000);
+}
+
+function subscribeNewsletter() {
+    const emailInput = document.getElementById('newsletterEmail');
+    const btn = document.querySelector('.newsletter-btn');
+    
+    if (isAuthenticated) {
+        // Already subscribed
+        btn.innerHTML = '✅ You\'re Already Subscribed!';
+        return;
+    }
+    
+    const email = emailInput.value.trim();
+    if (!email || !validateEmail(email)) {
+        alert('Please enter a valid email address');
+        return;
+    }
+    
+    btn.disabled = true;
+    btn.innerHTML = '📧 Subscribing...';
+    
+    // For now, just show success (you can add backend endpoint later)
+    setTimeout(() => {
+        btn.innerHTML = '✅ Subscribed!';
+        emailInput.disabled = true;
+    }, 1000);
 }
 
 function setupUsernameValidation() {
