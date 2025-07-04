@@ -144,6 +144,13 @@ function showLoginScreen() {
                 
                 <div id="loginError" class="login-error" style="display: none;"></div>
                 
+                <!-- ADD THIS FORGOT PASSWORD SECTION -->
+                <div class="forgot-password-section">
+                    <button type="button" class="forgot-password-link" onclick="showForgotPasswordModal()">
+                        🔑 Forgot Password?
+                    </button>
+                </div>
+                
                 <div class="guest-section">
                     <h3>Or browse as guest</h3>
                     <p>View N5-level kanji and vocabulary only (no quiz access)</p>
@@ -154,6 +161,146 @@ function showLoginScreen() {
             </div>
         </div>
     `;
+}
+
+function showForgotPasswordModal() {
+    // Create modal if it doesn't exist
+    let modal = document.getElementById('forgotPasswordModal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'forgotPasswordModal';
+        modal.className = 'modal';
+        modal.innerHTML = `
+            <div class="modal-content">
+                <span class="close" onclick="closeForgotPasswordModal()">&times;</span>
+                <div class="modal-header">
+                    <h2>🔑 Reset Your Password</h2>
+                    <p>Enter your username and we'll send you a new password</p>
+                </div>
+                
+                <form id="forgotPasswordForm" onsubmit="handleForgotPassword(event)">
+                    <div class="modal-field">
+                        <label for="forgotUsername">Username:</label>
+                        <input type="text" id="forgotUsername" required 
+                               placeholder="Enter your username" 
+                               autocomplete="username">
+                    </div>
+                    
+                    <div class="security-notice">
+                        <p><strong>🔒 Security Notice:</strong></p>
+                        <p>If your username exists in our database, we will send a new temporary password to the email address associated with your account.</p>
+                        <p>If you don't receive an email within 5 minutes, please contact <a href="mailto:support@thekanjiwizard.com">support@thekanjiwizard.com</a></p>
+                    </div>
+                    
+                    <div id="forgotPasswordMessage"></div>
+                    
+                    <div class="modal-actions">
+                        <button type="submit" class="modal-btn primary" id="resetPasswordBtn">
+                            📧 Send New Password
+                        </button>
+                        <button type="button" class="modal-btn secondary" onclick="closeForgotPasswordModal()">
+                            Cancel
+                        </button>
+                    </div>
+                </form>
+            </div>
+        `;
+        document.body.appendChild(modal);
+    }
+    
+    modal.style.display = 'block';
+    
+    // Focus on username input
+    setTimeout(() => {
+        document.getElementById('forgotUsername').focus();
+    }, 100);
+    
+    // Close modal when clicking outside
+    modal.onclick = function(event) {
+        if (event.target === modal) {
+            closeForgotPasswordModal();
+        }
+    };
+}
+
+function closeForgotPasswordModal() {
+    const modal = document.getElementById('forgotPasswordModal');
+    if (modal) {
+        modal.style.display = 'none';
+        document.getElementById('forgotPasswordForm').reset();
+        document.getElementById('forgotPasswordMessage').innerHTML = '';
+    }
+}
+
+function handleForgotPassword(event) {
+    event.preventDefault();
+    
+    const username = document.getElementById('forgotUsername').value.trim();
+    const messageDiv = document.getElementById('forgotPasswordMessage');
+    const resetBtn = document.getElementById('resetPasswordBtn');
+    
+    if (!username) {
+        messageDiv.innerHTML = '<div class="message error">Please enter your username</div>';
+        return;
+    }
+    
+    // Disable button and show loading
+    resetBtn.disabled = true;
+    resetBtn.textContent = 'Sending...';
+    messageDiv.innerHTML = '';
+    
+    fetch('/api/forgot-password', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ username: username })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            messageDiv.innerHTML = `
+                <div class="message success">
+                    <strong>✅ Password Reset Requested</strong><br>
+                    If your username exists in our database, we've sent a new temporary password to your registered email address.<br><br>
+                    <strong>Next steps:</strong><br>
+                    1. Check your email (including spam folder)<br>
+                    2. Log in with your new temporary password<br>
+                    3. Change your password after logging in<br><br>
+                    <small>If you don't receive an email within 5 minutes, please contact support@thekanjiwizard.com</small>
+                </div>
+            `;
+            
+            // Change button text
+            resetBtn.textContent = '✅ Request Sent';
+            
+            // Auto-close modal after a delay
+            setTimeout(() => {
+                closeForgotPasswordModal();
+            }, 8000);
+            
+        } else {
+            messageDiv.innerHTML = `<div class="message error">Something went wrong. Please try again or contact support.</div>`;
+            resetBtn.disabled = false;
+            resetBtn.textContent = '📧 Send New Password';
+        }
+    })
+    .catch(error => {
+        console.error('Forgot password error:', error);
+        messageDiv.innerHTML = `
+            <div class="message success">
+                <strong>✅ Password Reset Requested</strong><br>
+                If your username exists in our database, we've sent a new temporary password to your registered email address.<br><br>
+                If you don't receive an email within 5 minutes, please contact support@thekanjiwizard.com
+            </div>
+        `;
+        resetBtn.textContent = '✅ Request Sent';
+        
+        // Auto-close modal after a delay
+        setTimeout(() => {
+            closeForgotPasswordModal();
+        }, 6000);
+    });
 }
 
 function handleLogin(event) {
