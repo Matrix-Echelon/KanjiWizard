@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payment Success - Kanji Wizard</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        .success-container {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            font-family: Arial, sans-serif;
+        }
+        
+        .success-box {
+            background: white;
+            padding: 40px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            width: 100%;
+            max-width: 600px;
+            text-align: center;
+        }
+        
+        .success-icon {
+            font-size: 72px;
+            margin-bottom: 20px;
+            animation: bounce 1s ease-in-out;
+        }
+        
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-20px); }
+        }
+        
+        .success-title {
+            color: #28a745;
+            font-size: 32px;
+            margin-bottom: 20px;
+            font-weight: bold;
+        }
+        
+        .success-message {
+            color: #666;
+            font-size: 18px;
+            margin-bottom: 30px;
+            line-height: 1.6;
+        }
+        
+        .credentials-info {
+            background: #d4edda;
+            border: 2px solid #c3e6cb;
+            border-radius: 10px;
+            padding: 25px;
+            margin: 30px 0;
+        }
+        
+        .credentials-info h3 {
+            color: #155724;
+            margin-bottom: 15px;
+        }
+        
+        .credentials-info p {
+            color: #155724;
+            margin: 8px 0;
+        }
+        
+        .next-steps {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 25px;
+            margin: 30px 0;
+        }
+        
+        .next-steps h3 {
+            color: #4a90e2;
+            margin-bottom: 15px;
+        }
+        
+        .next-steps ul {
+            text-align: left;
+            color: #666;
+            line-height: 1.8;
+        }
+        
+        .action-buttons {
+            margin-top: 30px;
+        }
+        
+        .btn {
+            padding: 15px 30px;
+            margin: 0 10px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #4a90e2, #357abd);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(74, 144, 226, 0.3);
+        }
+        
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+        
+        .btn-secondary:hover {
+            background: #5a6268;
+            transform: translateY(-1px);
+        }
+        
+        .payment-details {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            font-size: 14px;
+            color: #666;
+        }
+        
+        .loading {
+            font-style: italic;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="success-container">
+        <div class="success-box">
+            <div class="success-icon">🎉</div>
+            <h1 class="success-title">Payment Successful!</h1>
+            
+            <p class="success-message">
+                Thank you for purchasing Kanji Wizard! Your payment has been processed successfully.
+            </p>
+            
+            <div class="payment-details" id="paymentDetails">
+                <div class="loading">Loading payment details...</div>
+            </div>
+            
+            <div class="credentials-info">
+                <h3>📧 Check Your Email</h3>
+                <p><strong>Your login credentials have been sent to your email address.</strong></p>
+                <p>You should receive them within the next few minutes.</p>
+                <p>⚠️ Please check your spam folder if you don't see the email in your inbox.</p>
+            </div>
+            
+            <div class="next-steps">
+                <h3>🚀 What's Next?</h3>
+                <ul>
+                    <li>Check your email for login credentials</li>
+                    <li>Log in to your new account</li>
+                    <li>Change your temporary password (recommended)</li>
+                    <li>Start exploring all JLPT levels</li>
+                    <li>Create your first custom quiz</li>
+                </ul>
+            </div>
+            
+            <div class="action-buttons">
+                <a href="/" class="btn btn-primary">Go to Kanji Wizard</a>
+                <a href="mailto:support@yourapp.com" class="btn btn-secondary">Contact Support</a>
+            </div>
+            
+            <p style="margin-top: 30px; font-size: 12px; color: #999;">
+                Transaction ID: <span id="transactionId">Loading...</span>
+            </p>
+        </div>
+    </div>
+
+    <script>
+        // Get session ID from URL params
+        const urlParams = new URLSearchParams(window.location.search);
+        const sessionId = urlParams.get('session_id');
+        
+        if (sessionId) {
+            // Fetch payment details
+            fetch(`/api/payment-status/${sessionId}`)
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('paymentDetails').innerHTML = `
+                        <strong>Payment Status:</strong> ${data.status}<br>
+                        <strong>Email:</strong> ${data.customer_email}
+                    `;
+                    document.getElementById('transactionId').textContent = sessionId;
+                })
+                .catch(error => {
+                    console.error('Error fetching payment details:', error);
+                    document.getElementById('paymentDetails').innerHTML = `
+                        <strong>Payment completed successfully!</strong><br>
+                        Please check your email for confirmation details.
+                    `;
+                    document.getElementById('transactionId').textContent = sessionId;
+                });
+        } else {
+            document.getElementById('paymentDetails').innerHTML = `
+                <strong>Payment completed successfully!</strong><br>
+                Please check your email for confirmation details.
+            `;
+            document.getElementById('transactionId').textContent = 'Not available';
+        }
+    </script>
+</body>
+</html>

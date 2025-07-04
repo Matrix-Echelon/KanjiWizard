@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payment Canceled - Kanji Wizard</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        .canceled-container {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
+            font-family: Arial, sans-serif;
+        }
+        
+        .canceled-box {
+            background: white;
+            padding: 40px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            width: 100%;
+            max-width: 500px;
+            text-align: center;
+        }
+        
+        .canceled-icon {
+            font-size: 72px;
+            margin-bottom: 20px;
+            color: #dc3545;
+        }
+        
+        .canceled-title {
+            color: #dc3545;
+            font-size: 28px;
+            margin-bottom: 20px;
+            font-weight: bold;
+        }
+        
+        .canceled-message {
+            color: #666;
+            font-size: 18px;
+            margin-bottom: 30px;
+            line-height: 1.6;
+        }
+        
+        .reassurance-box {
+            background: #d1ecf1;
+            border: 2px solid #bee5eb;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 30px 0;
+        }
+        
+        .reassurance-box h3 {
+            color: #0c5460;
+            margin-bottom: 10px;
+        }
+        
+        .reassurance-box p {
+            color: #0c5460;
+            margin: 5px 0;
+        }
+        
+        .demo-section {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 25px;
+            margin: 30px 0;
+        }
+        
+        .demo-section h3 {
+            color: #4a90e2;
+            margin-bottom: 15px;
+        }
+        
+        .demo-section p {
+            color: #666;
+            margin-bottom: 15px;
+        }
+        
+        .action-buttons {
+            margin-top: 30px;
+        }
+        
+        .btn {
+            padding: 15px 30px;
+            margin: 0 10px 10px 10px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #4a90e2, #357abd);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(74, 144, 226, 0.3);
+        }
+        
+        .btn-success {
+            background: linear-gradient(135deg, #28a745, #20c997);
+            color: white;
+        }
+        
+        .btn-success:hover {
+            background: linear-gradient(135deg, #218838, #1ea085);
+            transform: translateY(-2px);
+        }
+        
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+        
+        .btn-secondary:hover {
+            background: #5a6268;
+            transform: translateY(-1px);
+        }
+        
+        @media (max-width: 600px) {
+            .btn {
+                display: block;
+                width: 100%;
+                margin: 5px 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="canceled-container">
+        <div class="canceled-box">
+            <div class="canceled-icon">😔</div>
+            <h1 class="canceled-title">Payment Canceled</h1>
+            
+            <p class="canceled-message">
+                No worries! Your payment was canceled (or has failed) and you have not been charged.
+            </p>
+            
+            <div class="reassurance-box">
+                <h3>💳 No Charges Applied</h3>
+                <p>Your payment method was not charged.</p>
+                <p>You can try again anytime you're ready.</p>
+                <p>If you were charged and are seeing this page, please contact support@thekanjiwizard.com</p>
+            </div>
+            
+            <div class="demo-section">
+                <h3>🎯 Try Before You Buy</h3>
+                <p>Not sure yet? No problem! You can explore our demo features:</p>
+                <ul style="text-align: left; color: #666;">
+                    <li>✅ Browse N5 kanji and vocabulary</li>
+                    <li>✅ Try our quiz system</li>
+                    <li>✅ See the quality of our content</li>
+                    <li>✅ No registration required for demo</li>
+                </ul>
+            </div>
+            
+            <div class="action-buttons">
+                <a href="/" class="btn btn-primary">Continue Browsing</a>
+                <a href="/?pricing=true" class="btn btn-success">Try Payment Again</a>
+                <a href="/?demo=true" class="btn btn-secondary">Try Demo Quiz</a>
+            </div>
+            
+            <p style="margin-top: 30px; font-size: 14px; color: #666;">
+                Questions? Contact us at 
+                <a href="mailto:support@yourapp.com" style="color: #4a90e2;">support@yourapp.com</a>
+            </p>
+        </div>
+    </div>
+
+    <script>
+        // Check if user came from pricing page and should be redirected there
+        if (window.location.search.includes('pricing=true')) {
+            setTimeout(() => {
+                window.location.href = '/#pricing';
+            }, 3000);
+        }
+        
+        // Check if user wants to try demo
+        if (window.location.search.includes('demo=true')) {
+            setTimeout(() => {
+                window.location.href = '/#demo-quiz';
+            }, 2000);
+        }
+    </script>
+</body>
+</html>
