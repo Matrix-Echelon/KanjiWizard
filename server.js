@@ -109,6 +109,37 @@ function ensureTablesExist() {
             status VARCHAR(50),
             details TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )`,
+
+        `CREATE TABLE IF NOT EXISTS ip_blacklist (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            ip_address VARCHAR(45) NOT NULL,
+            reason VARCHAR(255),
+            blocked_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            blocked_until TIMESTAMP NULL,
+            is_permanent BOOLEAN DEFAULT FALSE,
+            INDEX idx_ip (ip_address)
+        )`,
+        
+        `CREATE TABLE IF NOT EXISTS login_attempts (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            username VARCHAR(255),
+            ip_address VARCHAR(45),
+            success BOOLEAN DEFAULT FALSE,
+            attempted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_username (username),
+            INDEX idx_ip (ip_address),
+            INDEX idx_attempted_at (attempted_at)
+        )`,
+        
+        `CREATE TABLE IF NOT EXISTS account_lockouts (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            username VARCHAR(255) UNIQUE,
+            failed_attempts INT DEFAULT 0,
+            locked_until TIMESTAMP NULL,
+            last_attempt_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_username (username),
+            INDEX idx_locked_until (locked_until)
         )`
     ];
     
@@ -220,6 +251,157 @@ async function sendEmail(to, subject, html, emailType) {
         
         return false;
     }
+}
+
+// IP Blacklist Middleware
+function checkIPBlacklist(req, res, next) {
+    const clientIP = req.ip || req.connection.remoteAddress;
+    
+    console.log('🔍 Checking IP:', clientIP);
+    
+    db.query(
+        'SELECT * FROM ip_blacklist WHERE ip_address = ? AND (is_permanent = TRUE OR blocked_until > NOW())',
+        [clientIP],
+        (err, results) => {
+            if (err) {
+                console.error('IP blacklist check error:', err);
+                return next(); // Continue on error to avoid blocking legitimate users
+            }
+            
+            if (results.length > 0) {
+                const block = results[0];
+                console.log('🚫 Blocked IP attempt:', clientIP, 'Reason:', block.reason);
+                
+                return res.status(403).json({
+                    error: 'Access denied. Your IP address has been temporarily restricted.',
+                    code: 'IP_BLOCKED'
+                });
+            }
+            
+            next();
+        }
+    );
+}
+
+// Account Lockout Check
+async function checkAccountLockout(username) {
+    return new Promise((resolve, reject) => {
+        db.query(
+            'SELECT * FROM account_lockouts WHERE username = ?',
+            [username],
+            (err, results) => {
+                if (err) {
+                    reject(err);
+                    return;
+                }
+                
+                if (results.length === 0) {
+                    resolve({ isLocked: false, attemptsLeft: 10 });
+                    return;
+                }
+                
+                const lockout = results[0];
+                const now = new Date();
+                
+                // Check if lock has expired
+                if (lockout.locked_until && new Date(lockout.locked_until) > now) {
+                    const minutesLeft = Math.ceil((new Date(lockout.locked_until) - now) / 60000);
+                    resolve({ 
+                        isLocked: true, 
+                        minutesLeft: minutesLeft,
+                        attemptsLeft: 0
+                    });
+                } else {
+                    // Lock has expired, reset attempts
+                    if (lockout.locked_until) {
+                        db.query(
+                            'UPDATE account_lockouts SET failed_attempts = 0, locked_until = NULL WHERE username = ?',
+                            [username]
+                        );
+                    }
+                    
+                    const attemptsLeft = Math.max(0, 10 - lockout.failed_attempts);
+                    resolve({ isLocked: false, attemptsLeft: attemptsLeft });
+                }
+            }
+        );
+    });
+}
+
+// Record Login Attempt
+async function recordLoginAttempt(username, ip, success) {
+    return new Promise((resolve, reject) => {
+        // Record the attempt
+        db.query(
+            'INSERT INTO login_attempts (username, ip_address, success) VALUES (?, ?, ?)',
+            [username, ip, success],
+            (err) => {
+                if (err) {
+                    console.error('Error recording login attempt:', err);
+                }
+            }
+        );
+        
+        if (!success) {
+            // Update failed attempts counter
+            db.query(
+                'INSERT INTO account_lockouts (username, failed_attempts, last_attempt_at) VALUES (?, 1, NOW()) ON DUPLICATE KEY UPDATE failed_attempts = failed_attempts + 1, last_attempt_at = NOW()',
+                [username],
+                (err, result) => {
+                    if (err) {
+                        reject(err);
+                        return;
+                    }
+                    
+                    // Check if we need to lock the account
+                    db.query(
+                        'SELECT failed_attempts FROM account_lockouts WHERE username = ?',
+                        [username],
+                        (err, results) => {
+                            if (err) {
+                                reject(err);
+                                return;
+                            }
+                            
+                            const failedAttempts = results[0].failed_attempts;
+                            
+                            if (failedAttempts >= 10) {
+                                // Lock account for 30 minutes
+                                const lockUntil = new Date(Date.now() + 30 * 60 * 1000);
+                                
+                                db.query(
+                                    'UPDATE account_lockouts SET locked_until = ? WHERE username = ?',
+                                    [lockUntil, username],
+                                    (err) => {
+                                        if (err) {
+                                            console.error('Error locking account:', err);
+                                        } else {
+                                            console.log('🔒 Account locked:', username, 'until:', lockUntil);
+                                        }
+                                        resolve({ locked: true, attemptsLeft: 0 });
+                                    }
+                                );
+                            } else {
+                                resolve({ locked: false, attemptsLeft: 10 - failedAttempts });
+                            }
+                        }
+                    );
+                }
+            );
+        } else {
+            // Success - reset failed attempts
+            db.query(
+                'UPDATE account_lockouts SET failed_attempts = 0, locked_until = NULL WHERE username = ?',
+                [username],
+                (err) => {
+                    if (err) {
+                        console.error('Error resetting login attempts:', err);
+                    }
+                    resolve({ locked: false, attemptsLeft: 10 });
+                }
+            );
+        }
+    });
 }
 
 // Middleware
@@ -882,43 +1064,86 @@ app.get('/api/test-email', async (req, res) => {
     }
 });
 
+app.use('/api/login', checkIPBlacklist);
+app.use('/api/forgot-password', checkIPBlacklist);
+app.use('/api/create-checkout-session', checkIPBlacklist);
+
 // EXISTING AUTHENTICATION ROUTES
 
-app.post('/api/login', (req, res) => {
+app.post('/api/login', async (req, res) => {
     const { username, password } = req.body;
+    const clientIP = req.ip || req.connection.remoteAddress;
     
-    console.log('Login attempt:', { username });
+    console.log('Login attempt:', { username, ip: clientIP });
     
-    const query = 'SELECT id, username, email, temp_pass FROM users WHERE username = ? AND user_password = ?';
-    
-    db.query(query, [username, password], (err, results) => {
-        if (err) {
-            console.error('Login error:', err);
-            res.status(500).json({ error: 'Server error' });
-            return;
+    try {
+        // Check account lockout first
+        const lockoutStatus = await checkAccountLockout(username);
+        
+        if (lockoutStatus.isLocked) {
+            await recordLoginAttempt(username, clientIP, false);
+            return res.status(429).json({
+                error: `Account temporarily locked due to too many failed attempts. Try again in ${lockoutStatus.minutesLeft} minutes.`,
+                code: 'ACCOUNT_LOCKED',
+                minutesLeft: lockoutStatus.minutesLeft
+            });
         }
         
-        if (results.length > 0) {
-            req.session.userId = results[0].id;
-            req.session.username = results[0].username;
+        // Proceed with normal login
+        const query = 'SELECT id, username, email, temp_pass FROM users WHERE username = ? AND user_password = ?';
+        
+        db.query(query, [username, password], async (err, results) => {
+            if (err) {
+                console.error('Login error:', err);
+                await recordLoginAttempt(username, clientIP, false);
+                return res.status(500).json({ error: 'Server error' });
+            }
             
-            console.log('Login successful for user:', results[0].username);
-            
-            res.json({
-                success: true,
-                user: {
-                    id: results[0].id,
-                    username: results[0].username,
-                    email: results[0].email,
-                    temp_pass: results[0].temp_pass
+            if (results.length > 0) {
+                // Successful login
+                await recordLoginAttempt(username, clientIP, true);
+                
+                req.session.userId = results[0].id;
+                req.session.username = results[0].username;
+                
+                console.log('Login successful for user:', results[0].username);
+                
+                res.json({
+                    success: true,
+                    user: {
+                        id: results[0].id,
+                        username: results[0].username,
+                        email: results[0].email,
+                        temp_pass: results[0].temp_pass
+                    }
+                });
+            } else {
+                // Failed login
+                const result = await recordLoginAttempt(username, clientIP, false);
+                
+                console.log('Login failed for username:', username, 'Attempts left:', result.attemptsLeft);
+                
+                let errorMessage = 'Invalid username or password';
+                if (result.attemptsLeft <= 3 && result.attemptsLeft > 0) {
+                    errorMessage += `. Warning: ${result.attemptsLeft} attempts remaining before account lockout.`;
+                } else if (result.locked) {
+                    errorMessage = 'Account locked due to too many failed attempts. Try again in 30 minutes.';
                 }
-            });
-        } else {
-            console.log('Login failed for username:', username);
-            res.status(401).json({ error: 'Invalid username or password' });
-        }
-    });
+                
+                res.status(401).json({ 
+                    error: errorMessage,
+                    attemptsLeft: result.attemptsLeft,
+                    code: result.locked ? 'ACCOUNT_LOCKED' : 'INVALID_CREDENTIALS'
+                });
+            }
+        });
+        
+    } catch (error) {
+        console.error('Login process error:', error);
+        res.status(500).json({ error: 'Server error' });
+    }
 });
+
 
 app.post('/api/logout', (req, res) => {
     req.session.destroy((err) => {
