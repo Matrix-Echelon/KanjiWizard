@@ -335,6 +335,189 @@ function validateEmail(email) {
     return emailRegex.test(email);
 }
 
+app.post('/api/forgot-password', async (req, res) => {
+    try {
+        const { username } = req.body;
+        
+        if (!username || username.trim().length === 0) {
+            return res.status(400).json({ error: 'Username is required' });
+        }
+        
+        console.log('🔑 Password reset requested for username:', username);
+        
+        // Look up user by username
+        db.query('SELECT id, username, email FROM users WHERE username = ?', [username.trim()], async (err, results) => {
+            if (err) {
+                console.error('Database error during password reset:', err);
+                // Still return success to not reveal database errors
+                return res.json({ 
+                    success: true, 
+                    message: 'If your username exists, an email has been sent.' 
+                });
+            }
+            
+            // Always return success to prevent username enumeration
+            res.json({ 
+                success: true, 
+                message: 'If your username exists, an email has been sent.' 
+            });
+            
+            // If user exists, process the password reset
+            if (results.length > 0) {
+                const user = results[0];
+                console.log('✅ User found for password reset:', user.username);
+                
+                try {
+                    await processPasswordReset(user);
+                } catch (error) {
+                    console.error('❌ Error processing password reset for user:', user.username, error);
+                    // Don't return error to client - already sent success response
+                }
+            } else {
+                console.log('⚠️ Password reset requested for non-existent username:', username);
+                // Log this for security monitoring but don't reveal to user
+            }
+        });
+        
+    } catch (error) {
+        console.error('❌ Forgot password error:', error);
+        // Return success even on error to prevent information disclosure
+        res.json({ 
+            success: true, 
+            message: 'If your username exists, an email has been sent.' 
+        });
+    }
+});
+
+// Helper function to process the actual password reset
+async function processPasswordReset(user) {
+    console.log('🔄 Processing password reset for user:', user.username);
+    
+    try {
+        // Generate new temporary password
+        const newTempPassword = crypto.randomBytes(8).toString('hex');
+        
+        // Update user's password and set temp_pass flag
+        await new Promise((resolve, reject) => {
+            db.query(
+                'UPDATE users SET user_password = ?, temp_pass = 1 WHERE id = ?',
+                [newTempPassword, user.id],
+                (err, result) => {
+                    if (err) {
+                        console.error('❌ Error updating user password:', err);
+                        reject(err);
+                    } else {
+                        console.log('✅ Password updated for user:', user.username);
+                        resolve(result);
+                    }
+                }
+            );
+        });
+        
+        // Send password reset email
+        const resetEmailHtml = `
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>Password Reset - Kanji Wizard</title>
+            </head>
+            <body style="margin: 0; padding: 20px; font-family: Arial, sans-serif; background-color: #f5f5f5;">
+                <div style="max-width: 600px; margin: 0 auto; background: white; border-radius: 15px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
+                    
+                    <!-- Header -->
+                    <div style="background: linear-gradient(135deg, #4a90e2, #357abd); color: white; padding: 40px 30px; text-align: center;">
+                        <h1 style="margin: 0; font-size: 28px;">🔑 Password Reset</h1>
+                        <p style="margin: 10px 0 0 0; font-size: 16px; opacity: 0.9;">Your new temporary password</p>
+                    </div>
+                    
+                    <!-- Content -->
+                    <div style="padding: 40px 30px;">
+                        <h2 style="color: #4a90e2; margin-bottom: 20px;">Password Reset Successful</h2>
+                        <p style="font-size: 16px; line-height: 1.6; color: #333;">
+                            You requested a password reset for your Kanji Wizard account. Here are your new login credentials:
+                        </p>
+                        
+                        <!-- Login Credentials -->
+                        <div style="background: #fff3cd; padding: 25px; border-radius: 10px; margin: 25px 0; border: 2px solid #ffc107;">
+                            <h3 style="color: #856404; margin-top: 0;">🔐 Your Login Credentials</h3>
+                            <p style="margin: 12px 0; color: #856404; font-size: 16px;"><strong>Username:</strong> <code style="background: rgba(255,255,255,0.8); padding: 4px 8px; border-radius: 4px; font-size: 14px;">${user.username}</code></p>
+                            <p style="margin: 12px 0; color: #856404; font-size: 16px;"><strong>New Temporary Password:</strong> <code style="background: rgba(255,255,255,0.8); padding: 4px 8px; border-radius: 4px; font-size: 14px;">${newTempPassword}</code></p>
+                        </div>
+                        
+                        <!-- Security Notice -->
+                        <div style="background: #f8d7da; padding: 25px; border-radius: 10px; margin: 25px 0; border: 2px solid #dc3545;">
+                            <h3 style="color: #721c24; margin-top: 0;">🚨 Important Security Steps</h3>
+                            <ol style="color: #721c24; line-height: 1.6;">
+                                <li><strong>Log in immediately</strong> using the credentials above</li>
+                                <li><strong>Change your password</strong> as soon as you log in</li>
+                                <li><strong>Choose a strong password</strong> that you haven't used before</li>
+                                <li><strong>Don't share</strong> these credentials with anyone</li>
+                            </ol>
+                        </div>
+                        
+                        <!-- CTA Button -->
+                        <div style="text-align: center; margin: 30px 0;">
+                            <a href="https://thekanjiwizard.com" style="display: inline-block; background: linear-gradient(135deg, #4a90e2, #357abd); color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px;">
+                                🚀 Log In Now
+                            </a>
+                        </div>
+                        
+                        <!-- Help Section -->
+                        <div style="background: #f8f9fa; padding: 20px; border-radius: 10px; margin: 25px 0;">
+                            <h4 style="color: #333; margin-top: 0;">❓ Didn't Request This?</h4>
+                            <p style="color: #666; margin: 0; line-height: 1.6;">
+                                If you didn't request a password reset, please contact us immediately at 
+                                <a href="mailto:support@thekanjiwizard.com" style="color: #4a90e2;">support@thekanjiwizard.com</a>
+                            </p>
+                        </div>
+                    </div>
+                    
+                    <!-- Footer -->
+                    <div style="background: #f8f9fa; padding: 20px 30px; text-align: center; border-top: 1px solid #dee2e6;">
+                        <p style="margin: 0; color: #666; font-size: 14px;">
+                            This password reset was requested on ${new Date().toLocaleString()}
+                        </p>
+                        <p style="margin: 10px 0 0 0; color: #999; font-size: 12px;">
+                            © 2025 Kanji Wizard. All rights reserved.
+                        </p>
+                    </div>
+                </div>
+            </body>
+            </html>
+        `;
+        
+        console.log('📧 Sending password reset email to:', user.email);
+        const emailSent = await sendEmail(
+            user.email,
+            '🔑 Your Kanji Wizard Password Has Been Reset',
+            resetEmailHtml,
+            'password_reset'
+        );
+        
+        if (emailSent) {
+            console.log('✅ Password reset email sent successfully to:', user.email);
+        } else {
+            console.error('❌ Failed to send password reset email to:', user.email);
+            throw new Error('Failed to send reset email');
+        }
+        
+        // Log the password reset for security monitoring
+        db.query(
+            'INSERT INTO email_logs (email, email_type, status, details) VALUES (?, ?, ?, ?)',
+            [user.email, 'password_reset', 'completed', `Password reset for username: ${user.username}`],
+            (err) => {
+                if (err) console.error('Error logging password reset:', err);
+            }
+        );
+        
+    } catch (error) {
+        console.error('❌ Error in processPasswordReset:', error);
+        throw error;
+    }
+}
+
 // PAYMENT ROUTES
 
 // Create Stripe Checkout Session
