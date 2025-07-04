@@ -191,6 +191,40 @@ app.use('/webhook', (req, res, next) => {
     next();
 });
 
+// Stripe Webhook (to handle successful payments)
+app.post('/webhook', express.raw({type: 'application/json'}), async (req, res) => {
+    const sig = req.headers['stripe-signature'];
+    let event;
+
+    console.log('🔔 Webhook received from Stripe');
+    console.log('Headers:', req.headers);
+
+    try {
+        event = stripe.webhooks.constructEvent(req.body, sig, process.env.STRIPE_WEBHOOK_SECRET);
+        console.log('✅ Webhook signature verified');
+    } catch (err) {
+        console.error('❌ Webhook signature verification failed:', err.message);
+        console.error('Expected endpoint secret:', process.env.STRIPE_WEBHOOK_SECRET ? 'Set' : 'NOT SET');
+        return res.status(400).send(`Webhook Error: ${err.message}`);
+    }
+
+    console.log('🔔 Processing webhook event:', event.type);
+
+    try {
+        if (event.type === 'checkout.session.completed') {
+            const session = event.data.object;
+            console.log('💰 Processing completed checkout session:', session.id);
+            await handleSuccessfulPayment(session);
+        }
+
+        res.json({received: true});
+    } catch (error) {
+        console.error('❌ Error processing webhook:', error);
+        res.status(500).send('Webhook processing failed');
+    }
+});
+
+
 app.use(express.json());
 
 // Rate limiting
@@ -303,39 +337,6 @@ app.post('/api/create-checkout-session', paymentLimiter, async (req, res) => {
     } catch (error) {
         console.error('❌ Error creating checkout session:', error);
         res.status(500).json({ error: 'Failed to create payment session' });
-    }
-});
-
-// Stripe Webhook (to handle successful payments)
-app.post('/webhook', express.raw({type: 'application/json'}), async (req, res) => {
-    const sig = req.headers['stripe-signature'];
-    let event;
-
-    console.log('🔔 Webhook received from Stripe');
-    console.log('Headers:', req.headers);
-
-    try {
-        event = stripe.webhooks.constructEvent(req.body, sig, process.env.STRIPE_WEBHOOK_SECRET);
-        console.log('✅ Webhook signature verified');
-    } catch (err) {
-        console.error('❌ Webhook signature verification failed:', err.message);
-        console.error('Expected endpoint secret:', process.env.STRIPE_WEBHOOK_SECRET ? 'Set' : 'NOT SET');
-        return res.status(400).send(`Webhook Error: ${err.message}`);
-    }
-
-    console.log('🔔 Processing webhook event:', event.type);
-
-    try {
-        if (event.type === 'checkout.session.completed') {
-            const session = event.data.object;
-            console.log('💰 Processing completed checkout session:', session.id);
-            await handleSuccessfulPayment(session);
-        }
-
-        res.json({received: true});
-    } catch (error) {
-        console.error('❌ Error processing webhook:', error);
-        res.status(500).send('Webhook processing failed');
     }
 });
 
