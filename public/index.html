@@ -605,7 +605,8 @@ function toggleSelection(itemId) {
                     userSelections.add(itemId);
                 }
                 updateToggleButton(itemId, !isSelected);
-                applyFilters();
+                //applyFilters();
+                displayPaginatedItems();
             }
         })
         .catch(error => {
