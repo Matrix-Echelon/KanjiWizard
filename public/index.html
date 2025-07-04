@@ -177,15 +177,20 @@ function handleLogin(event) {
         body: JSON.stringify({ username, password })
     })
     .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            isAuthenticated = true;
-            currentUser = data.user;
-            showMainApp();
-        } else {
-            showLoginError(data.error || 'Login failed');
-        }
-    })
+.then(data => {
+    if (data.success) {
+        isAuthenticated = true;
+        currentUser = data.user;
+        showMainApp();
+        
+        // Check if user has temporary password after login
+        setTimeout(() => {
+            checkTemporaryPassword();
+        }, 1500);
+    } else {
+        showLoginError(data.error || 'Login failed');
+    }
+})
     .catch(error => {
         console.error('Login error:', error);
         showLoginError('Connection error. Please try again.');
@@ -194,6 +199,8 @@ function handleLogin(event) {
         loginButton.disabled = false;
         loginButton.textContent = 'Login';
     });
+
+
 }
 
 function showLoginError(message) {
@@ -288,6 +295,10 @@ function showMainApp() {
             searchItems();
         }
     });
+
+    setTimeout(() => {
+    checkTemporaryPassword();
+    }, 1000);
 }
 
 
@@ -1756,7 +1767,7 @@ function showPricing() {
                 <div class="pricing-header">
                     <h3>🎌 Full Access Account</h3>
                     <div class="price-display">
-                        <span class="price-amount"><s>$20</s>  $15</span>
+                        <span class="price-amount"><s>$25.99</s> $15.99</span>
                         <span class="price-period">one-time payment</span>
                     </div>
                     <p class="price-subtitle">Lifetime access • No monthly fees</p>
@@ -1788,17 +1799,27 @@ function showPricing() {
                             <span class="competitor-price">$8/month = $96/year</span>
                         </div>
                         <div class="comparison-item our-price">
-                            <span class="competitor">Our App:</span>
-                            <span class="competitor-price"><s>$20</s> $15 one-time = LIFETIME</span>
+                            <span class="competitor">Kanji Wizard:</span>
+                            <span class="competitor-price">$15.99 one-time = LIFETIME</span>
                         </div>
                     </div>
                 </div>
                 
-                <div class="pricing-cta">
-                    <button class="upgrade-btn primary" onclick="showAbout()">
-                        Get Full Access - <s>$20</s> $15
-                    </button>
-                    <p class="cta-subtitle">Join thousands of Japanese learners worldwide!</p>
+                <div class="pricing-form">
+                    <h4>🛒 Get Started Now</h4>
+                    <div class="email-input-section">
+                        <label for="customerEmail">Enter your email address:</label>
+                        <input type="email" id="customerEmail" placeholder="your@email.com" required>
+                        <small>We'll send your login credentials to this email</small>
+                    </div>
+                    
+                    <div class="pricing-cta">
+                        <button class="upgrade-btn primary" onclick="startCheckout()" id="checkoutBtn">
+                            🔐 Secure Checkout - $15.99
+                        </button>
+                        <p class="cta-subtitle">Instant access • Secure payment via Stripe</p>
+                        <p class="security-note">🔒 Your payment is secure and encrypted</p>
+                    </div>
                 </div>
             </div>
             
@@ -1814,6 +1835,227 @@ function showPricing() {
     `;
 }
 
+async function startCheckout() {
+    const emailInput = document.getElementById('customerEmail');
+    const checkoutBtn = document.getElementById('checkoutBtn');
+    const email = emailInput.value.trim();
+    
+    // Validate email
+    if (!email) {
+        alert('Please enter your email address');
+        emailInput.focus();
+        return;
+    }
+    
+    if (!validateEmail(email)) {
+        alert('Please enter a valid email address');
+        emailInput.focus();
+        return;
+    }
+    
+    // Disable button and show loading
+    checkoutBtn.disabled = true;
+    checkoutBtn.innerHTML = '⏳ Redirecting to checkout...';
+    
+    try {
+        const response = await fetch('/api/create-checkout-session', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ email: email })
+        });
+        
+        const data = await response.json();
+        
+        if (data.url) {
+            // Redirect to Stripe Checkout
+            window.location.href = data.url;
+        } else {
+            throw new Error(data.error || 'Failed to create checkout session');
+        }
+        
+    } catch (error) {
+        console.error('Checkout error:', error);
+        alert('Error starting checkout: ' + error.message);
+        
+        // Re-enable button
+        checkoutBtn.disabled = false;
+        checkoutBtn.innerHTML = '🔐 Secure Checkout - $15.99';
+    }
+}
+
+function validateEmail(email) {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+}
+
+
+// Check if user has temporary password and show warning
+function checkTemporaryPassword() {
+    if (isAuthenticated && currentUser && currentUser.temp_pass === 1) {
+        showTemporaryPasswordWarning();
+    }
+}
+
+function showTemporaryPasswordWarning() {
+    const existingWarning = document.getElementById('tempPasswordWarning');
+    if (existingWarning) return; // Don't show multiple warnings
+    
+    const header = document.querySelector('.header');
+    const warning = document.createElement('div');
+    warning.id = 'tempPasswordWarning';
+    warning.className = 'temp-password-warning';
+    warning.innerHTML = `
+        <h3>⚠️ Temporary Password Active</h3>
+        <p>For security, please change your temporary password to a personal one.</p>
+        <button class="change-password-btn" onclick="showPasswordChangeModal()">
+            Change Password Now
+        </button>
+    `;
+    
+    header.insertAdjacentElement('afterend', warning);
+}
+
+function showPasswordChangeModal() {
+    // Create modal if it doesn't exist
+    let modal = document.getElementById('passwordModal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'passwordModal';
+        modal.className = 'modal';
+        modal.innerHTML = `
+            <div class="modal-content">
+                <span class="close" onclick="closePasswordModal()">&times;</span>
+                <div class="modal-header">
+                    <h2>🔐 Change Your Password</h2>
+                    <p>Create a secure password for your account</p>
+                </div>
+                
+                <form id="passwordChangeForm" onsubmit="handlePasswordChange(event)">
+                    <div class="modal-field">
+                        <label for="currentPassword">Current Password:</label>
+                        <input type="password" id="currentPassword" required>
+                    </div>
+                    
+                    <div class="modal-field">
+                        <label for="newPassword">New Password:</label>
+                        <input type="password" id="newPassword" minlength="6" required>
+                        <small>Minimum 6 characters</small>
+                    </div>
+                    
+                    <div class="modal-field">
+                        <label for="confirmPassword">Confirm New Password:</label>
+                        <input type="password" id="confirmPassword" minlength="6" required>
+                    </div>
+                    
+                    <div id="passwordMessage"></div>
+                    
+                    <div class="modal-actions">
+                        <button type="submit" class="modal-btn primary" id="changePasswordBtn">
+                            Change Password
+                        </button>
+                        <button type="button" class="modal-btn secondary" onclick="closePasswordModal()">
+                            Cancel
+                        </button>
+                    </div>
+                </form>
+            </div>
+        `;
+        document.body.appendChild(modal);
+    }
+    
+    modal.style.display = 'block';
+    
+    // Close modal when clicking outside
+    modal.onclick = function(event) {
+        if (event.target === modal) {
+            closePasswordModal();
+        }
+    };
+}
+
+function closePasswordModal() {
+    const modal = document.getElementById('passwordModal');
+    if (modal) {
+        modal.style.display = 'none';
+        // Clear form
+        document.getElementById('passwordChangeForm').reset();
+        document.getElementById('passwordMessage').innerHTML = '';
+    }
+}
+
+function handlePasswordChange(event) {
+    event.preventDefault();
+    
+    const currentPassword = document.getElementById('currentPassword').value;
+    const newPassword = document.getElementById('newPassword').value;
+    const confirmPassword = document.getElementById('confirmPassword').value;
+    const messageDiv = document.getElementById('passwordMessage');
+    const changeBtn = document.getElementById('changePasswordBtn');
+    
+    // Clear previous messages
+    messageDiv.innerHTML = '';
+    
+    // Validate passwords match
+    if (newPassword !== confirmPassword) {
+        messageDiv.innerHTML = '<div class="message error">New passwords do not match</div>';
+        return;
+    }
+    
+    // Validate password strength
+    if (newPassword.length < 6) {
+        messageDiv.innerHTML = '<div class="message error">Password must be at least 6 characters long</div>';
+        return;
+    }
+    
+    // Disable button and show loading
+    changeBtn.disabled = true;
+    changeBtn.textContent = 'Changing Password...';
+    
+    fetch('/api/change-password', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            currentPassword: currentPassword,
+            newPassword: newPassword
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            messageDiv.innerHTML = '<div class="message success">Password changed successfully!</div>';
+            
+            // Update current user temp_pass status
+            if (currentUser) {
+                currentUser.temp_pass = 0;
+            }
+            
+            // Hide temporary password warning
+            const warning = document.getElementById('tempPasswordWarning');
+            if (warning) {
+                warning.remove();
+            }
+            
+            // Close modal after a brief delay
+            setTimeout(() => {
+                closePasswordModal();
+            }, 2000);
+        } else {
+            messageDiv.innerHTML = `<div class="message error">${data.error}</div>`;
+        }
+    })
+    .catch(error => {
+        console.error('Password change error:', error);
+        messageDiv.innerHTML = '<div class="message error">An error occurred. Please try again.</div>';
+    })
+    .finally(() => {
+        changeBtn.disabled = false;
+        changeBtn.textContent = 'Change Password';
+    });
+}
 
 document.getElementById('searchInput').addEventListener('keypress', function(e) {
     if (e.key === 'Enter') {
