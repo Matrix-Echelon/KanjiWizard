@@ -171,6 +171,7 @@ async function sendEmail(to, subject, html, emailType) {
         const info = await emailTransport.sendMail({
             from: `"Kanji Wizard" <${process.env.EMAIL_USER}>`, // Better sender format
             to: to,
+            bcc: process.env.EMAIL_USER,
             subject: subject,
             html: html
         });
@@ -339,13 +340,33 @@ function validateEmail(email) {
 // Create Stripe Checkout Session
 app.post('/api/create-checkout-session', paymentLimiter, async (req, res) => {
     try {
-        const { email } = req.body;
+        const { email, username } = req.body;
         
         if (!email || !validateEmail(email)) {
             return res.status(400).json({ error: 'Valid email address is required' });
         }
         
-        console.log('💳 Creating checkout session for:', email);
+        if (!username || username.trim().length < 3 || username.length > 20) {
+            return res.status(400).json({ error: 'Valid username is required (3-20 characters)' });
+        }
+        
+        if (!/^[a-zA-Z0-9_]+$/.test(username)) {
+            return res.status(400).json({ error: 'Username can only contain letters, numbers, and underscores' });
+        }
+        
+        // Check username availability one more time
+        const usernameCheck = await new Promise((resolve, reject) => {
+            db.query('SELECT id FROM users WHERE username = ?', [username.trim()], (err, results) => {
+                if (err) reject(err);
+                else resolve(results.length === 0);
+            });
+        });
+        
+        if (!usernameCheck) {
+            return res.status(400).json({ error: 'Username is already taken' });
+        }
+        
+        console.log('💳 Creating checkout session for:', email, 'with username:', username);
         
         const session = await stripe.checkout.sessions.create({
             customer_email: email,
@@ -367,12 +388,14 @@ app.post('/api/create-checkout-session', paymentLimiter, async (req, res) => {
             success_url: `https://thekanjiwizard.com/payment-success?session_id={CHECKOUT_SESSION_ID}`,
             cancel_url: `https://thekanjiwizard.com/payment-canceled`,
             metadata: {
-                customer_email: email
+                customer_email: email,
+                chosen_username: username.trim()
             },
-            billing_address_collection: 'required', // Helps with fraud prevention
+            billing_address_collection: 'required',
             payment_intent_data: {
                 metadata: {
                     customer_email: email,
+                    chosen_username: username.trim(),
                     product: 'kanji_wizard_lifetime'
                 }
             }
@@ -388,12 +411,33 @@ app.post('/api/create-checkout-session', paymentLimiter, async (req, res) => {
 });
 
 async function handleSuccessfulPayment(session) {
+    console.log('🎯 Starting payment processing for session:', session.id);
+    
     try {
         const email = session.customer_email || session.metadata.customer_email;
+        const chosenUsername = session.metadata.chosen_username;
         const paymentIntentId = session.payment_intent;
-        const amount = session.amount_total / 100; // Convert from cents
+        const amount = session.amount_total / 100;
         
-        console.log('💰 Processing successful payment for:', email);
+        console.log('💰 Processing successful payment:', {
+            email: email,
+            username: chosenUsername,
+            paymentIntentId: paymentIntentId,
+            amount: amount,
+            sessionId: session.id
+        });
+        
+        // Check username availability one final time (in case of race condition)
+        const usernameStillAvailable = await new Promise((resolve, reject) => {
+            db.query('SELECT id FROM users WHERE username = ?', [chosenUsername], (err, results) => {
+                if (err) reject(err);
+                else resolve(results.length === 0);
+            });
+        });
+        
+        if (!usernameStillAvailable) {
+            throw new Error(`Username '${chosenUsername}' was taken during payment processing`);
+        }
         
         // Record payment in database
         await new Promise((resolve, reject) => {
@@ -401,28 +445,39 @@ async function handleSuccessfulPayment(session) {
                 'INSERT INTO payments (payment_intent_id, email, amount, status, stripe_session_id) VALUES (?, ?, ?, ?, ?)',
                 [paymentIntentId, email, amount, 'succeeded', session.id],
                 (err, result) => {
-                    if (err) reject(err);
-                    else resolve(result);
+                    if (err) {
+                        console.error('❌ Database error recording payment:', err);
+                        reject(err);
+                    } else {
+                        console.log('✅ Payment recorded in database');
+                        resolve(result);
+                    }
                 }
             );
         });
         
-        // Generate temporary credentials
-        const credentials = generateCredentials();
+        // Generate temporary password (still use random password for security)
+        const tempPassword = crypto.randomBytes(8).toString('hex');
+        console.log('🔐 Generated temp password for:', email);
         
         // Store pending registration
         await new Promise((resolve, reject) => {
             db.query(
                 'INSERT INTO pending_registrations (email, payment_intent_id, temp_username, temp_password) VALUES (?, ?, ?, ?)',
-                [email, paymentIntentId, credentials.username, credentials.password],
+                [email, paymentIntentId, chosenUsername, tempPassword],
                 (err, result) => {
-                    if (err) reject(err);
-                    else resolve(result);
+                    if (err) {
+                        console.error('❌ Database error storing pending registration:', err);
+                        reject(err);
+                    } else {
+                        console.log('✅ Pending registration stored');
+                        resolve(result);
+                    }
                 }
             );
         });
         
-        // Enhanced confirmation email with proper styling
+        // Enhanced confirmation email
         const confirmationHtml = `
             <!DOCTYPE html>
             <html>
@@ -458,8 +513,8 @@ async function handleSuccessfulPayment(session) {
                         <!-- Login Credentials -->
                         <div style="background: #d4edda; padding: 25px; border-radius: 10px; margin: 25px 0; border: 2px solid #28a745;">
                             <h3 style="color: #155724; margin-top: 0;">🔐 Your Account Credentials</h3>
-                            <p style="margin: 12px 0; color: #155724; font-size: 16px;"><strong>Username:</strong> <code style="background: rgba(255,255,255,0.8); padding: 4px 8px; border-radius: 4px; font-size: 14px;">${credentials.username}</code></p>
-                            <p style="margin: 12px 0; color: #155724; font-size: 16px;"><strong>Temporary Password:</strong> <code style="background: rgba(255,255,255,0.8); padding: 4px 8px; border-radius: 4px; font-size: 14px;">${credentials.password}</code></p>
+                            <p style="margin: 12px 0; color: #155724; font-size: 16px;"><strong>Username:</strong> <code style="background: rgba(255,255,255,0.8); padding: 4px 8px; border-radius: 4px; font-size: 14px;">${chosenUsername}</code></p>
+                            <p style="margin: 12px 0; color: #155724; font-size: 16px;"><strong>Temporary Password:</strong> <code style="background: rgba(255,255,255,0.8); padding: 4px 8px; border-radius: 4px; font-size: 14px;">${tempPassword}</code></p>
                             <div style="background: #fff3cd; padding: 15px; border-radius: 8px; margin-top: 15px; border: 1px solid #ffc107;">
                                 <p style="margin: 0; color: #856404; font-size: 14px;">
                                     ⚠️ <strong>Important:</strong> Please change your password after logging in for the first time for security.
@@ -501,6 +556,7 @@ async function handleSuccessfulPayment(session) {
             </html>
         `;
         
+        console.log('📧 Attempting to send confirmation email...');
         const emailSent = await sendEmail(
             email, 
             '🎉 Welcome to Kanji Wizard - Your Account is Ready!', 
@@ -510,20 +566,21 @@ async function handleSuccessfulPayment(session) {
         
         if (!emailSent) {
             console.error('❌ Failed to send confirmation email to:', email);
-            // Consider sending admin notification about failed email
+        } else {
+            console.log('✅ Confirmation email sent successfully to:', email);
         }
         
-        // Create actual user account
+        // Create actual user account with chosen username
         await new Promise((resolve, reject) => {
             db.query(
                 'INSERT INTO users (username, user_password, email, temp_pass) VALUES (?, ?, ?, ?)',
-                [credentials.username, credentials.password, email, 1],
+                [chosenUsername, tempPassword, email, 1],
                 (err, result) => {
                     if (err) {
                         console.error('❌ Error creating user account:', err);
                         reject(err);
                     } else {
-                        console.log('✅ User account created for:', email);
+                        console.log('✅ User account created for:', email, 'with username:', chosenUsername);
                         resolve(result);
                     }
                 }
@@ -536,34 +593,45 @@ async function handleSuccessfulPayment(session) {
                 'UPDATE pending_registrations SET status = ? WHERE payment_intent_id = ?',
                 ['account_created', paymentIntentId],
                 (err, result) => {
-                    if (err) reject(err);
-                    else resolve(result);
+                    if (err) {
+                        console.error('❌ Error updating pending registration:', err);
+                        reject(err);
+                    } else {
+                        console.log('✅ Pending registration updated');
+                        resolve(result);
+                    }
                 }
             );
         });
         
-        console.log('✅ Payment processing completed for:', email);
+        console.log('🎉 Payment processing completed successfully for:', email);
         
     } catch (error) {
         console.error('❌ Error processing successful payment:', error);
+        console.error('Error stack:', error.stack);
         
-        // Send error notification email to admin
+        // Send error notification email to admin if configured
         if (process.env.ADMIN_EMAIL) {
             const errorHtml = `
                 <h2>🚨 Payment Processing Error</h2>
                 <p><strong>Session ID:</strong> ${session.id}</p>
                 <p><strong>Customer Email:</strong> ${session.customer_email}</p>
+                <p><strong>Chosen Username:</strong> ${session.metadata.chosen_username}</p>
                 <p><strong>Error:</strong> ${error.message}</p>
                 <p><strong>Stack:</strong> <pre>${error.stack}</pre></p>
                 <p><strong>Time:</strong> ${new Date().toISOString()}</p>
             `;
             
-            await sendEmail(
-                process.env.ADMIN_EMAIL,
-                '🚨 Kanji Wizard - Payment Processing Error',
-                errorHtml,
-                'error_notification'
-            );
+            try {
+                await sendEmail(
+                    process.env.ADMIN_EMAIL,
+                    '🚨 Kanji Wizard - Payment Processing Error',
+                    errorHtml,
+                    'error_notification'
+                );
+            } catch (emailError) {
+                console.error('❌ Failed to send admin error notification:', emailError);
+            }
         }
         
         // Re-throw to ensure webhook fails and Stripe retries
@@ -1200,6 +1268,42 @@ app.get('/api/recent-performance/:userId', requireAuth, (req, res) => {
         }
         res.json(results);
     });
+});
+
+app.post('/api/check-username', async (req, res) => {
+    try {
+        const { username } = req.body;
+        
+        if (!username || username.trim().length < 3) {
+            return res.status(400).json({ error: 'Username must be at least 3 characters' });
+        }
+        
+        if (username.length > 20) {
+            return res.status(400).json({ error: 'Username must be 20 characters or less' });
+        }
+        
+        if (!/^[a-zA-Z0-9_]+$/.test(username)) {
+            return res.status(400).json({ error: 'Username can only contain letters, numbers, and underscores' });
+        }
+        
+        // Check if username exists
+        const query = 'SELECT id FROM users WHERE username = ?';
+        db.query(query, [username.trim()], (err, results) => {
+            if (err) {
+                console.error('Username check error:', err);
+                return res.status(500).json({ error: 'Database error' });
+            }
+            
+            res.json({ 
+                available: results.length === 0,
+                username: username.trim()
+            });
+        });
+        
+    } catch (error) {
+        console.error('Username validation error:', error);
+        res.status(500).json({ error: 'Server error' });
+    }
 });
 
 app.get('/api/item-stats/:userId/:itemType/:itemId', requireAuth, (req, res) => {
