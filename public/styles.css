@@ -1815,3 +1815,421 @@ body {
         margin: 5px 0;
     }
 }
+
+.pricing-form {
+    background: white;
+    border-radius: 10px;
+    padding: 30px;
+    margin: 30px 0;
+    border: 2px solid #4a90e2;
+}
+
+.pricing-form h4 {
+    color: #4a90e2;
+    margin-bottom: 20px;
+    font-size: 20px;
+}
+
+.email-input-section {
+    margin-bottom: 25px;
+    text-align: left;
+}
+
+.email-input-section label {
+    display: block;
+    font-weight: bold;
+    margin-bottom: 8px;
+    color: #333;
+    font-size: 16px;
+}
+
+.email-input-section input[type="email"] {
+    width: 100%;
+    padding: 15px;
+    border: 2px solid #ddd;
+    border-radius: 8px;
+    font-size: 16px;
+    transition: border-color 0.3s ease;
+    box-sizing: border-box;
+}
+
+.email-input-section input[type="email"]:focus {
+    outline: none;
+    border-color: #4a90e2;
+    box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.1);
+}
+
+.email-input-section small {
+    display: block;
+    color: #666;
+    font-size: 14px;
+    margin-top: 5px;
+    font-style: italic;
+}
+
+.upgrade-btn {
+    padding: 20px 40px;
+    font-size: 20px;
+    font-weight: bold;
+    background: linear-gradient(135deg, #28a745, #20c997);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);
+    width: 100%;
+    margin-bottom: 15px;
+}
+
+.upgrade-btn:hover:not(:disabled) {
+    background: linear-gradient(135deg, #218838, #1ea085);
+    transform: translateY(-3px);
+    box-shadow: 0 6px 20px rgba(40, 167, 69, 0.4);
+}
+
+.upgrade-btn:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.security-note {
+    margin-top: 10px !important;
+    color: #28a745 !important;
+    font-size: 14px !important;
+    font-weight: bold !important;
+}
+
+.cta-subtitle {
+    margin-top: 10px;
+    color: #666;
+    font-size: 14px;
+    font-style: italic;
+}
+
+/* Password Change Modal Styles */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.5);
+}
+
+.modal-content {
+    background-color: white;
+    margin: 10% auto;
+    padding: 30px;
+    border-radius: 15px;
+    width: 90%;
+    max-width: 500px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+}
+
+.modal-header {
+    text-align: center;
+    margin-bottom: 25px;
+}
+
+.modal-header h2 {
+    color: #4a90e2;
+    margin-bottom: 10px;
+}
+
+.modal-field {
+    margin-bottom: 20px;
+}
+
+.modal-field label {
+    display: block;
+    font-weight: bold;
+    margin-bottom: 5px;
+    color: #333;
+}
+
+.modal-field input[type="password"] {
+    width: 100%;
+    padding: 12px;
+    border: 2px solid #ddd;
+    border-radius: 8px;
+    font-size: 16px;
+    transition: border-color 0.3s ease;
+    box-sizing: border-box;
+}
+
+.modal-field input[type="password"]:focus {
+    outline: none;
+    border-color: #4a90e2;
+}
+
+.modal-actions {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+    margin-top: 25px;
+}
+
+.modal-btn {
+    padding: 12px 24px;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.modal-btn.primary {
+    background-color: #4a90e2;
+    color: white;
+}
+
+.modal-btn.primary:hover {
+    background-color: #357abd;
+}
+
+.modal-btn.secondary {
+    background-color: #6c757d;
+    color: white;
+}
+
+.modal-btn.secondary:hover {
+    background-color: #5a6268;
+}
+
+.close {
+    color: #aaa;
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+    line-height: 1;
+}
+
+.close:hover,
+.close:focus {
+    color: #000;
+}
+
+/* Temporary Password Warning */
+.temp-password-warning {
+    background: #fff3cd;
+    border: 2px solid #ffc107;
+    border-radius: 10px;
+    padding: 15px;
+    margin: 20px 0;
+    text-align: center;
+}
+
+.temp-password-warning h3 {
+    color: #856404;
+    margin-bottom: 10px;
+    font-size: 18px;
+}
+
+.temp-password-warning p {
+    color: #856404;
+    margin: 5px 0;
+    font-size: 14px;
+}
+
+.change-password-btn {
+    background: #ffc107;
+    color: #212529;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 5px;
+    font-weight: bold;
+    cursor: pointer;
+    margin-top: 10px;
+    transition: all 0.3s ease;
+}
+
+.change-password-btn:hover {
+    background: #e0a800;
+    transform: translateY(-1px);
+}
+
+/* Success/Error Messages */
+.message {
+    padding: 15px;
+    border-radius: 8px;
+    margin: 15px 0;
+    font-weight: bold;
+    text-align: center;
+}
+
+.message.success {
+    background: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+.message.error {
+    background: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .pricing-form {
+        padding: 20px 15px;
+        margin: 20px 0;
+    }
+    
+    .email-input-section input[type="email"] {
+        padding: 12px;
+        font-size: 16px;
+    }
+    
+    .upgrade-btn {
+        padding: 15px 30px;
+        font-size: 18px;
+    }
+    
+    .modal-content {
+        margin: 20% auto;
+        padding: 20px;
+        width: 95%;
+    }
+    
+    .modal-actions {
+        flex-direction: column;
+    }
+    
+    .modal-btn {
+        width: 100%;
+        margin: 5px 0;
+    }
+}
+
+/* Temporary Password Warning */
+.temp-password-warning {
+    background: #fff3cd;
+    border: 2px solid #ffc107;
+    border-radius: 10px;
+    padding: 15px;
+    margin: 20px auto;
+    text-align: center;
+    max-width: 1200px;
+}
+
+.temp-password-warning h3 {
+    color: #856404;
+    margin-bottom: 10px;
+    font-size: 18px;
+}
+
+.temp-password-warning p {
+    color: #856404;
+    margin: 5px 0;
+    font-size: 14px;
+}
+
+.change-password-btn {
+    background: #ffc107;
+    color: #212529;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 5px;
+    font-weight: bold;
+    cursor: pointer;
+    margin-top: 10px;
+    transition: all 0.3s ease;
+}
+
+.change-password-btn:hover {
+    background: #e0a800;
+    transform: translateY(-1px);
+}
+
+/* Modal Styles */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.5);
+}
+
+.modal-content {
+    background-color: white;
+    margin: 10% auto;
+    padding: 30px;
+    border-radius: 15px;
+    width: 90%;
+    max-width: 500px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+}
+
+.modal-header {
+    text-align: center;
+    margin-bottom: 25px;
+}
+
+.modal-header h2 {
+    color: #4a90e2;
+    margin-bottom: 10px;
+}
+
+.modal-field {
+    margin-bottom: 20px;
+}
+
+.modal-field label {
+    display: block;
+    font-weight: bold;
+    margin-bottom: 5px;
+    color: #333;
+}
+
+.modal-field input[type="password"] {
+    width: 100%;
+    padding: 12px;
+    border: 2px solid #ddd;
+    border-radius: 8px;
+    font-size: 16px;
+    box-sizing: border-box;
+}
+
+.modal-actions {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+    margin-top: 25px;
+}
+
+.modal-btn {
+    padding: 12px 24px;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.modal-btn.primary {
+    background-color: #4a90e2;
+    color: white;
+}
+
+.modal-btn.secondary {
+    background-color: #6c757d;
+    color: white;
+}
+
+.close {
+    color: #aaa;
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+}
