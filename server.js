@@ -752,7 +752,7 @@ app.post('/api/create-checkout-session', paymentLimiter, async (req, res) => {
                             name: 'Kanji Wizard - Lifetime Access',
                             description: 'Full access to all JLPT levels, unlimited quizzes, and progress tracking',
                         },
-                        unit_amount: 1599, // $15.99 in cents
+                        unit_amount: 100, // $15.99 in cents
                     },
                     quantity: 1,
                 },
