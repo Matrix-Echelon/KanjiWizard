@@ -1181,7 +1181,7 @@ function showKanjiQuestion(kanji) {
         // Create formatted answer with meaning and readings
         const onyomiPart = item.onyomi ? ` • On: ${item.onyomi}` : '';
         const kunyomiPart = item.kunyomi ? ` • Kun: ${item.kunyomi}` : '';
-        const wrongAnswer = `${item.meaning}${onyomiPart}${kunyomiPart}`;
+        const wrongAnswer = `<strong>${item.meaning}</strong>${onyomiPart}${kunyomiPart}`;
         
         wrongAnswers.push(wrongAnswer);
     }
@@ -1189,7 +1189,7 @@ function showKanjiQuestion(kanji) {
     // Create correct answer with meaning and readings
     const onyomiPart = kanji.onyomi ? ` • On: ${kanji.onyomi}` : '';
     const kunyomiPart = kanji.kunyomi ? ` • Kun: ${kanji.kunyomi}` : '';
-    const correctAnswer = `${kanji.meaning}${onyomiPart}${kunyomiPart}`;
+    const correctAnswer = `<strong>${kanji.meaning}</strong>${onyomiPart}${kunyomiPart}`;
     
     const allAnswers = [correctAnswer, ...wrongAnswers];
     const shuffledAnswers = shuffleArray(allAnswers);
