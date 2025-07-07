@@ -305,61 +305,6 @@ body {
     margin-top: 40px; /* Increased from 30px */
 }
 
-.quiz-btn {
-    padding: 15px 30px; /* Increased from 12px 24px */
-    margin: 0 15px; /* Increased from 10px */
-    border: none;
-    border-radius: 8px;
-    font-size: 18px; /* Increased from 16px */
-    font-weight: bold;
-    cursor: pointer;
-    transition: all 0.3s ease;
-}
-
-.quiz-btn.primary {
-    background-color: #4a90e2;
-    color: white;
-}
-
-.quiz-btn.primary:hover {
-    background-color: #357abd;
-}
-
-.quiz-btn.secondary {
-    background-color: #6c7b7f;
-    color: white;
-}
-
-.quiz-btn.secondary:hover {
-    background-color: #5a6b7f;
-}
-
-.quiz-progress {
-    font-size: 16px; /* Increased from 14px */
-    color: #666;
-    margin-bottom: 25px; /* Increased from 20px */
-}
-
-.question-card {
-    padding: 30px 50px; /* More horizontal padding for breathing room */
-}
-
-.question-card h3 {
-    color: #333;
-    margin-bottom: 25px;
-    font-size: 22px;
-}
-
-.question-item {
-    font-size: 48px;
-    font-weight: bold;
-    color: #4a90e2;
-    margin: 40px 0;
-    padding: 30px 50px; /* More horizontal padding */
-    background: #f8f9fa;
-    border-radius: 15px;
-}
-
 .answers {
     display: grid;
     gap: 20px; /* Back to single column with good spacing */
@@ -607,48 +552,6 @@ body {
     margin-left: auto;
     margin-right: auto;
 }
-
-.answer-btn {
-    padding: 20px 25px; /* Increased from 15px 20px */
-    background: white;
-    border: 2px solid #ddd;
-    border-radius: 12px; /* Increased from 10px */
-    font-size: 16px; /* Kept same but made explicit */
-    cursor: pointer;
-    transition: all 0.3s ease;
-    text-align: left;
-    line-height: 1.5; /* Increased from 1.4 */
-    min-height: 80px; /* Increased from 60px */
-    display: flex;
-    align-items: center;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.05); /* Added subtle shadow */
-}
-
-.answer-btn:hover:not(:disabled) {
-    border-color: #4a90e2;
-    background: #f0f8ff;
-    transform: translateY(-2px); /* Added subtle lift effect */
-    box-shadow: 0 4px 8px rgba(74, 144, 226, 0.1);
-}
-
-.answer-btn:disabled {
-    cursor: not-allowed;
-}
-
-.answer-btn.correct {
-    background-color: #d4edda;
-    border-color: #28a745;
-    color: #155724;
-    box-shadow: 0 4px 8px rgba(40, 167, 69, 0.2);
-}
-
-.answer-btn.incorrect {
-    background-color: #f8d7da;
-    border-color: #dc3545;
-    color: #721c24;
-    box-shadow: 0 4px 8px rgba(220, 53, 69, 0.2);
-}
-
 .quiz-feedback {
     margin: 30px 0; /* Increased from 20px */
 }
@@ -832,10 +735,11 @@ body {
 
 .stats-card {
     background: #f8f9fa;
-    padding: 20px;
+    padding: 25px;
     border-radius: 10px;
     border: 1px solid #dee2e6;
     text-align: center;
+    transition: transform 0.2s ease;
 }
 
 .stats-card h3 {
@@ -845,10 +749,10 @@ body {
 }
 
 .stats-number {
-    font-size: 24px;
+    font-size: 32px;
     font-weight: bold;
     color: #333;
-    margin: 5px 0;
+    margin: 10px 0;
 }
 
 .stats-detail {
@@ -2146,92 +2050,6 @@ body {
 .change-password-btn:hover {
     background: #e0a800;
     transform: translateY(-1px);
-}
-
-/* Modal Styles */
-.modal {
-    display: none;
-    position: fixed;
-    z-index: 1000;
-    left: 0;
-    top: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0,0,0,0.5);
-}
-
-.modal-content {
-    background-color: white;
-    margin: 10% auto;
-    padding: 30px;
-    border-radius: 15px;
-    width: 90%;
-    max-width: 500px;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-}
-
-.modal-header {
-    text-align: center;
-    margin-bottom: 25px;
-}
-
-.modal-header h2 {
-    color: #4a90e2;
-    margin-bottom: 10px;
-}
-
-.modal-field {
-    margin-bottom: 20px;
-}
-
-.modal-field label {
-    display: block;
-    font-weight: bold;
-    margin-bottom: 5px;
-    color: #333;
-}
-
-.modal-field input[type="password"] {
-    width: 100%;
-    padding: 12px;
-    border: 2px solid #ddd;
-    border-radius: 8px;
-    font-size: 16px;
-    box-sizing: border-box;
-}
-
-.modal-actions {
-    display: flex;
-    gap: 15px;
-    justify-content: center;
-    margin-top: 25px;
-}
-
-.modal-btn {
-    padding: 12px 24px;
-    border: none;
-    border-radius: 8px;
-    font-size: 16px;
-    font-weight: bold;
-    cursor: pointer;
-}
-
-.modal-btn.primary {
-    background-color: #4a90e2;
-    color: white;
-}
-
-.modal-btn.secondary {
-    background-color: #6c757d;
-    color: white;
-}
-
-.close {
-    color: #aaa;
-    float: right;
-    font-size: 28px;
-    font-weight: bold;
-    cursor: pointer;
 }
 
 .username-status {
