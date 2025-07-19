@@ -102,12 +102,12 @@ function checkAuthenticationStatus() {
             } else {
                 isAuthenticated = false;
                 currentUser = null;
-                ();
+                showLoginScreen();
             }
         })
         .catch(error => {
             console.error('Auth check error:', error);
-            ();
+            showLoginScreen();
         });
 }
 
