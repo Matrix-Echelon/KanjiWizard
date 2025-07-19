@@ -525,6 +525,206 @@ function validateEmail(email) {
     return emailRegex.test(email);
 }
 
+app.post('/api/register-free', checkIPBlacklist, function(req, res) {
+    try {
+        const username = req.body.username;
+        const email = req.body.email;
+        
+        // Validate inputs
+        if (!username || !email) {
+            return res.status(400).json({ error: 'Username and email are required' });
+        }
+        
+        if (!validateEmail(email)) {
+            return res.status(400).json({ error: 'Valid email address is required' });
+        }
+        
+        if (username.trim().length < 3 || username.length > 20) {
+            return res.status(400).json({ error: 'Username must be between 3 and 20 characters' });
+        }
+        
+        if (!/^[a-zA-Z0-9_]+$/.test(username)) {
+            return res.status(400).json({ error: 'Username can only contain letters, numbers, and underscores' });
+        }
+        
+        console.log('🆓 Free registration attempt:', { username: username, email: email });
+        
+        // Check if username or email already exists
+        db.query(
+            'SELECT id, username, email FROM users WHERE username = ? OR email = ?', 
+            [username.trim(), email.trim()], 
+            function(err, results) {
+                if (err) {
+                    console.error('❌ Database error during registration check:', err);
+                    return res.status(500).json({ error: 'Database error' });
+                }
+                
+                if (results.length > 0) {
+                    const existing = results[0];
+                    if (existing.username == username.trim()) {
+                        return res.status(400).json({ error: 'Username already taken' });
+                    }
+                    if (existing.email == email.trim()) {
+                        return res.status(400).json({ error: 'Email address already registered' });
+                    }
+                }
+                
+                // Generate temporary password
+                const tempPassword = crypto.randomBytes(8).toString('hex');
+                
+                // Create the user account with 'registered' role
+                db.query(
+                    'INSERT INTO users (username, user_password, email, role, temp_pass) VALUES (?, ?, ?, ?, ?)',
+                    [username.trim(), tempPassword, email.trim(), 'registered', 1],
+                    function(err, result) {
+                        if (err) {
+                            console.error('❌ Error creating free account:', err);
+                            return res.status(500).json({ error: 'Account creation failed' });
+                        }
+                        
+                        console.log('✅ Free account created for:', email);
+                        const userId = result.insertId;
+                        
+                        // Send welcome email
+                        const welcomeEmailHtml = createWelcomeEmailHTML(username, tempPassword);
+                        
+                        console.log('📧 Sending welcome email to:', email);
+                        sendEmail(
+                            email,
+                            '🎉 Welcome to Kanji Wizard - Your Free Account is Ready!',
+                            welcomeEmailHtml,
+                            'free_registration'
+                        ).then(function(emailSent) {
+                            if (!emailSent) {
+                                console.error('❌ Failed to send welcome email to:', email);
+                            }
+                            
+                            // Log the registration
+                            db.query(
+                                'INSERT INTO email_logs (email, email_type, status, details) VALUES (?, ?, ?, ?)',
+                                [email, 'free_registration', emailSent ? 'sent' : 'failed', 'Free account created for username: ' + username],
+                                function(err) {
+                                    if (err) console.error('Error logging registration:', err);
+                                }
+                            );
+                        }).catch(function(error) {
+                            console.error('❌ Email sending error:', error);
+                        });
+                        
+                        res.json({ 
+                            success: true, 
+                            message: 'Account created successfully! Check your email for login credentials.',
+                            userId: userId
+                        });
+                    }
+                );
+            }
+        );
+        
+    } catch (error) {
+        console.error('❌ Free registration error:', error);
+        res.status(500).json({ error: 'Registration failed. Please try again.' });
+    }
+});
+
+function createWelcomeEmailHTML(username, tempPassword) {
+    return `
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Welcome to Kanji Wizard!</title>
+        </head>
+        <body style="margin: 0; padding: 20px; font-family: Arial, sans-serif; background-color: #f5f5f5;">
+            <div style="max-width: 600px; margin: 0 auto; background: white; border-radius: 15px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
+                
+                <!-- Header -->
+                <div style="background: linear-gradient(135deg, #28a745, #20c997); color: white; padding: 40px 30px; text-align: center;">
+                    <h1 style="margin: 0; font-size: 28px;">🗾 Welcome to Kanji Wizard!</h1>
+                    <p style="margin: 10px 0 0 0; font-size: 16px; opacity: 0.9;">Your free account is ready</p>
+                </div>
+                
+                <!-- Content -->
+                <div style="padding: 40px 30px;">
+                    <h2 style="color: #28a745; margin-bottom: 20px;">🎉 Account Created Successfully!</h2>
+                    <p style="font-size: 16px; line-height: 1.6; color: #333;">
+                        Welcome to Kanji Wizard! Your free account has been created and you now have access to N5 and N4 level content with progress saving.
+                    </p>
+                    
+                    <!-- Login Credentials -->
+                    <div style="background: #d4edda; padding: 25px; border-radius: 10px; margin: 25px 0; border: 2px solid #28a745;">
+                        <h3 style="color: #155724; margin-top: 0;">🔐 Your Login Credentials</h3>
+                        <p style="margin: 12px 0; color: #155724; font-size: 16px;"><strong>Username:</strong> <code style="background: rgba(255,255,255,0.8); padding: 4px 8px; border-radius: 4px; font-size: 14px;">` + username + `</code></p>
+                        <p style="margin: 12px 0; color: #155724; font-size: 16px;"><strong>Temporary Password:</strong> <code style="background: rgba(255,255,255,0.8); padding: 4px 8px; border-radius: 4px; font-size: 14px;">` + tempPassword + `</code></p>
+                    </div>
+                    
+                    <!-- What You Get -->
+                    <div style="background: #f8f9fa; padding: 25px; border-radius: 10px; margin: 25px 0; border-left: 4px solid #28a745;">
+                        <h3 style="color: #333; margin-top: 0;">✨ What You Can Do</h3>
+                        <ul style="list-style: none; padding: 0;">
+                            <li style="padding: 5px 0; color: #666;">📚 Access N5 and N4 level content</li>
+                            <li style="padding: 5px 0; color: #666;">💾 Save your progress and quiz selections</li>
+                            <li style="padding: 5px 0; color: #666;">📊 Track your learning statistics</li>
+                            <li style="padding: 5px 0; color: #666;">🎯 Create custom quizzes</li>
+                        </ul>
+                    </div>
+                    
+                    <!-- Security Notice -->
+                    <div style="background: #fff3cd; padding: 20px; border-radius: 10px; margin: 25px 0; border: 2px solid #ffc107;">
+                        <h3 style="color: #856404; margin-top: 0;">🔒 Important Security Steps</h3>
+                        <ol style="color: #856404; line-height: 1.6;">
+                            <li>Log in with the credentials above</li>
+                            <li>Change your temporary password</li>
+                            <li>Start exploring N5 and N4 content!</li>
+                        </ol>
+                    </div>
+                    
+                    <!-- Upgrade Notice -->
+                    <div style="background: #e7f3ff; padding: 20px; border-radius: 10px; margin: 25px 0; border: 2px solid #4a90e2;">
+                        <h3 style="color: #4a90e2; margin-top: 0;">🚀 Want More?</h3>
+                        <p style="color: #4a90e2; margin: 0;">Upgrade to full access for just $9.99 to unlock N3, N2, and N1 content!</p>
+                    </div>
+                    
+                    <!-- CTA Button -->
+                    <div style="text-align: center; margin: 30px 0;">
+                        <a href="https://thekanjiwizard.com" style="display: inline-block; background: linear-gradient(135deg, #28a745, #20c997); color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px;">
+                            🚀 Start Learning Now
+                        </a>
+                    </div>
+                </div>
+                
+                <!-- Footer -->
+                <div style="background: #f8f9fa; padding: 20px 30px; text-align: center; border-top: 1px solid #dee2e6;">
+                    <p style="margin: 0; color: #666; font-size: 14px;">
+                        Need help? Contact us at <a href="mailto:support@thekanjiwizard.com" style="color: #28a745;">support@thekanjiwizard.com</a>
+                    </p>
+                    <p style="margin: 10px 0 0 0; color: #999; font-size: 12px;">
+                        © 2025 Kanji Wizard. All rights reserved.
+                    </p>
+                </div>
+            </div>
+        </body>
+        </html>
+    `;
+}
+
+function upgradeUserToPaid(email, callback) {
+    db.query(
+        'UPDATE users SET role = ? WHERE email = ?',
+        ['paid', email],
+        function(err, result) {
+            if (err) {
+                console.error('❌ Error upgrading user to paid:', err);
+                callback(err);
+            } else {
+                console.log('✅ User upgraded to paid:', email);
+                callback(null, result);
+            }
+        }
+    );
+}
+
 app.post('/api/forgot-password', async (req, res) => {
     try {
         const { username } = req.body;
@@ -944,21 +1144,53 @@ async function handleSuccessfulPayment(session) {
         }
         
         // Create actual user account with chosen username
-        await new Promise((resolve, reject) => {
-            db.query(
-                'INSERT INTO users (username, user_password, email, temp_pass) VALUES (?, ?, ?, ?)',
-                [chosenUsername, tempPassword, email, 1],
-                (err, result) => {
-                    if (err) {
-                        console.error('❌ Error creating user account:', err);
-                        reject(err);
-                    } else {
-                        console.log('✅ User account created for:', email, 'with username:', chosenUsername);
-                        resolve(result);
+await new Promise((resolve, reject) => {
+    db.query(
+        'SELECT id, role FROM users WHERE email = ?',
+        [email],
+        (err, existingUser) => {
+            if (err) {
+                console.error('❌ Error checking existing user:', err);
+                reject(err);
+                return;
+            }
+            
+            if (existingUser.length > 0) {
+                // User exists - this is an upgrade
+                console.log('🔄 Upgrading existing user to paid:', email);
+                db.query(
+                    'UPDATE users SET role = ? WHERE email = ?',
+                    ['paid', email],
+                    (upgradeErr, upgradeResult) => {
+                        if (upgradeErr) {
+                            console.error('❌ Error upgrading user to paid:', upgradeErr);
+                            reject(upgradeErr);
+                        } else {
+                            console.log('✅ User upgraded to paid:', email);
+                            resolve(upgradeResult);
+                        }
                     }
-                }
-            );
-        });
+                );
+            } else {
+                // New user - create account with paid role
+                console.log('👤 Creating new paid user account:', email);
+                db.query(
+                    'INSERT INTO users (username, user_password, email, role, temp_pass) VALUES (?, ?, ?, ?, ?)',
+                    [chosenUsername, tempPassword, email, 'paid', 1],
+                    (err, result) => {
+                        if (err) {
+                            console.error('❌ Error creating user account:', err);
+                            reject(err);
+                        } else {
+                            console.log('✅ User account created for:', email, 'with username:', chosenUsername, 'and role: paid');
+                            resolve(result);
+                        }
+                    }
+                );
+            }
+        }
+    );
+});
         
         // Update pending registration status
         await new Promise((resolve, reject) => {
@@ -1234,132 +1466,129 @@ app.get('/payment-canceled', (req, res) => {
 // ... (keeping all your existing routes exactly as they are)
 
 // Kanji route - allow guests but filter to N5 only
-app.get('/api/kanji', guestAccess, (req, res) => {
+app.get('/api/kanji', guestAccess, function(req, res) {
     let query = 'SELECT * FROM kanji';
     
     if (req.isGuest) {
+        // Guests: N5 only
         query += ' WHERE jlpt_level = "N5"';
+        query += ' ORDER BY frequency_rank';
+        
+        db.query(query, function(err, results) {
+            if (err) {
+                res.status(500).json({ error: err.message });
+                return;
+            }
+            res.json(results);
+        });
+    } else if (req.session.userId) {
+        // Check user role for filtering
+        db.query('SELECT role FROM users WHERE id = ?', [req.session.userId], function(err, userResult) {
+            if (err) {
+                return res.status(500).json({ error: 'Database error' });
+            }
+            
+            if (userResult.length == 0) {
+                return res.status(401).json({ error: 'User not found' });
+            }
+            
+            const userRole = userResult[0].role;
+            
+            if (userRole == 'registered') {
+                // Registered users: N5 and N4
+                query += ' WHERE jlpt_level IN ("N5", "N4")';
+            }
+            // Paid users get all content (no WHERE clause)
+            
+            query += ' ORDER BY frequency_rank';
+            
+            db.query(query, function(err, results) {
+                if (err) {
+                    res.status(500).json({ error: err.message });
+                    return;
+                }
+                res.json(results);
+            });
+        });
+    } else {
+        // Fallback to guest level
+        query += ' WHERE jlpt_level = "N5"';
+        query += ' ORDER BY frequency_rank';
+        
+        db.query(query, function(err, results) {
+            if (err) {
+                res.status(500).json({ error: err.message });
+                return;
+            }
+            res.json(results);
+        });
     }
-    
-    query += ' ORDER BY frequency_rank';
-    
-    db.query(query, (err, results) => {
-        if (err) {
-            res.status(500).json({ error: err.message });
-            return;
-        }
-        res.json(results);
-    });
 });
 
-// Words route - allow guests but filter to N5 only
-app.get('/api/words', guestAccess, (req, res) => {
+app.get('/api/words', guestAccess, function(req, res) {
     let query = 'SELECT * FROM words';
     
     if (req.isGuest) {
+        // Guests: N5 only
         query += ' WHERE jlpt_level = "N5"';
-    }
-    
-    query += ' ORDER BY frequency_rank';
-    
-    db.query(query, (err, results) => {
-        if (err) {
-            res.status(500).json({ error: err.message });
-            return;
-        }
-        res.json(results);
-    });
-});
-
-// Search kanji
-app.get('/api/kanji/search', guestAccess, (req, res) => {
-    const searchTerm = req.query.q;
-    const jlptFilter = req.query.jlpt;
-    
-    console.log('🔍 KANJI SEARCH DEBUG:');
-    console.log('  - Search Term:', searchTerm);
-    console.log('  - JLPT Filter:', jlptFilter);
-    console.log('  - Is Guest:', req.isGuest);
-    
-    if (!searchTerm || searchTerm.trim().length === 0) {
-        return res.status(400).json({ error: 'Search term is required' });
-    }
-    
-    if (searchTerm.length > 100) {
-        return res.status(400).json({ error: 'Search term too long' });
-    }
-    
-    let query = `SELECT * FROM kanji WHERE (kanji_char LIKE ? OR meaning LIKE ? OR onyomi LIKE ? OR kunyomi LIKE ?)`;
-    const searchPattern = `%${searchTerm}%`;
-    let params = [searchPattern, searchPattern, searchPattern, searchPattern];
-    
-    let activeJlptFilter = jlptFilter;
-    
-    if (req.isGuest) {
-        console.log('  - Guest detected: forcing N5 filter');
-        activeJlptFilter = 'N5';
+        query += ' ORDER BY frequency_rank';
         
-        if (jlptFilter && jlptFilter !== 'N5') {
-            console.log('  - Guest tried non-N5, returning empty');
-            return res.json([]);
-        }
-    }
-    
-    if (activeJlptFilter && activeJlptFilter.trim() !== '') {
-        console.log('  - Adding JLPT filter:', activeJlptFilter);
-        
-        if (activeJlptFilter === 'NULL') {
-            query += ` AND (jlpt_level IS NULL OR jlpt_level = '')`;
-        } else {
-            query += ` AND jlpt_level = ?`;
-            params.push(activeJlptFilter);
-        }
-    }
-    
-    query += ` ORDER BY frequency_rank LIMIT 500`;
-    
-    console.log('  - Final Query:', query);
-    console.log('  - Final Params:', params);
-    
-    db.query(query, params, (err, results) => {
-        if (err) {
-            console.error('❌ Database error:', err);
-            res.status(500).json({ error: 'Search failed' });
-            return;
-        }
-        
-        console.log(`✅ Query executed successfully`);
-        console.log(`  - Returned ${results.length} results`);
-        
-        if (results.length > 0) {
-            const jlptCounts = {};
-            results.forEach(item => {
-                const level = item.jlpt_level || 'NULL';
-                jlptCounts[level] = (jlptCounts[level] || 0) + 1;
-            });
-            console.log('  - JLPT distribution:', jlptCounts);
+        db.query(query, function(err, results) {
+            if (err) {
+                res.status(500).json({ error: err.message });
+                return;
+            }
+            res.json(results);
+        });
+    } else if (req.session.userId) {
+        // Check user role for filtering
+        db.query('SELECT role FROM users WHERE id = ?', [req.session.userId], function(err, userResult) {
+            if (err) {
+                return res.status(500).json({ error: 'Database error' });
+            }
             
-            console.log('  - First 3 results:');
-            results.slice(0, 3).forEach(item => {
-                console.log(`    * ${item.kanji_char}: "${item.meaning}" [${item.jlpt_level}]`);
+            if (userResult.length == 0) {
+                return res.status(401).json({ error: 'User not found' });
+            }
+            
+            const userRole = userResult[0].role;
+            
+            if (userRole == 'registered') {
+                // Registered users: N5 and N4
+                query += ' WHERE jlpt_level IN ("N5", "N4")';
+            }
+            // Paid users get all content (no WHERE clause)
+            
+            query += ' ORDER BY frequency_rank';
+            
+            db.query(query, function(err, results) {
+                if (err) {
+                    res.status(500).json({ error: err.message });
+                    return;
+                }
+                res.json(results);
             });
-        }
+        });
+    } else {
+        // Fallback to guest level
+        query += ' WHERE jlpt_level = "N5"';
+        query += ' ORDER BY frequency_rank';
         
-        res.json(results);
-    });
+        db.query(query, function(err, results) {
+            if (err) {
+                res.status(500).json({ error: err.message });
+                return;
+            }
+            res.json(results);
+        });
+    }
 });
 
-// Search words  
-app.get('/api/words/search', guestAccess, (req, res) => {
+app.get('/api/kanji/search', guestAccess, function(req, res) {
     const searchTerm = req.query.q;
     const jlptFilter = req.query.jlpt;
     
-    console.log('🔍 WORDS SEARCH DEBUG:');
-    console.log('  - Search Term:', searchTerm);
-    console.log('  - JLPT Filter:', jlptFilter);
-    console.log('  - Is Guest:', req.isGuest);
-    
-    if (!searchTerm || searchTerm.trim().length === 0) {
+    if (!searchTerm || searchTerm.trim().length == 0) {
         return res.status(400).json({ error: 'Search term is required' });
     }
     
@@ -1367,59 +1596,148 @@ app.get('/api/words/search', guestAccess, (req, res) => {
         return res.status(400).json({ error: 'Search term too long' });
     }
     
-    let query = `SELECT * FROM words WHERE (word LIKE ? OR reading LIKE ? OR meaning LIKE ?)`;
-    const searchPattern = `%${searchTerm}%`;
-    let params = [searchPattern, searchPattern, searchPattern];
-    
-    let activeJlptFilter = jlptFilter;
+    // Function to execute the search with role-based filtering
+    function executeSearch(allowedLevels) {
+        let query = 'SELECT * FROM kanji WHERE (kanji_char LIKE ? OR meaning LIKE ? OR onyomi LIKE ? OR kunyomi LIKE ?)';
+        const searchPattern = '%' + searchTerm + '%';
+        let params = [searchPattern, searchPattern, searchPattern, searchPattern];
+        
+        // Apply role-based filtering first
+        if (allowedLevels.length > 0) {
+            const levelPlaceholders = allowedLevels.map(function() { return '?'; }).join(',');
+            query += ' AND jlpt_level IN (' + levelPlaceholders + ')';
+            params = params.concat(allowedLevels);
+        }
+        
+        // Then apply user's JLPT filter if specified
+        let activeJlptFilter = jlptFilter;
+        if (activeJlptFilter && activeJlptFilter.trim() != '') {
+            if (activeJlptFilter == 'NULL') {
+                query += ' AND (jlpt_level IS NULL OR jlpt_level = "")';
+            } else if (allowedLevels.includes(activeJlptFilter) || allowedLevels.length == 0) {
+                query += ' AND jlpt_level = ?';
+                params.push(activeJlptFilter);
+            } else {
+                // User trying to access restricted content
+                return res.json([]);
+            }
+        }
+        
+        query += ' ORDER BY frequency_rank LIMIT 500';
+        
+        db.query(query, params, function(err, results) {
+            if (err) {
+                console.error('❌ Database error:', err);
+                res.status(500).json({ error: 'Search failed' });
+                return;
+            }
+            res.json(results);
+        });
+    }
     
     if (req.isGuest) {
-        console.log('  - Guest detected: forcing N5 filter');
-        activeJlptFilter = 'N5';
-        
-        if (jlptFilter && jlptFilter !== 'N5') {
-            console.log('  - Guest tried non-N5, returning empty');
-            return res.json([]);
-        }
+        // Guests: N5 only
+        executeSearch(['N5']);
+    } else if (req.session.userId) {
+        // Check user role
+        db.query('SELECT role FROM users WHERE id = ?', [req.session.userId], function(err, userResult) {
+            if (err) {
+                return res.status(500).json({ error: 'Database error' });
+            }
+            
+            if (userResult.length == 0) {
+                return res.status(401).json({ error: 'User not found' });
+            }
+            
+            const userRole = userResult[0].role;
+            
+            if (userRole == 'registered') {
+                executeSearch(['N5', 'N4']);
+            } else if (userRole == 'paid') {
+                executeSearch([]); // No restrictions for paid users
+            }
+        });
+    } else {
+        executeSearch(['N5']); // Fallback to guest level
+    }
+});
+
+app.get('/api/words/search', guestAccess, function(req, res) {
+    const searchTerm = req.query.q;
+    const jlptFilter = req.query.jlpt;
+    
+    if (!searchTerm || searchTerm.trim().length == 0) {
+        return res.status(400).json({ error: 'Search term is required' });
     }
     
-    if (activeJlptFilter && activeJlptFilter.trim() !== '') {
-        console.log('  - Adding JLPT filter:', activeJlptFilter);
-        
-        if (activeJlptFilter === 'NULL') {
-            query += ` AND (jlpt_level IS NULL OR jlpt_level = '')`;
-        } else {
-            query += ` AND jlpt_level = ?`;
-            params.push(activeJlptFilter);
-        }
+    if (searchTerm.length > 100) {
+        return res.status(400).json({ error: 'Search term too long' });
     }
     
-    query += ` ORDER BY frequency_rank LIMIT 500`;
-    
-    console.log('  - Final Query:', query);
-    console.log('  - Final Params:', params);
-    
-    db.query(query, params, (err, results) => {
-        if (err) {
-            console.error('❌ Database error:', err);
-            res.status(500).json({ error: 'Search failed' });
-            return;
+    // Function to execute the search with role-based filtering
+    function executeSearch(allowedLevels) {
+        let query = 'SELECT * FROM words WHERE (word LIKE ? OR reading LIKE ? OR meaning LIKE ?)';
+        const searchPattern = '%' + searchTerm + '%';
+        let params = [searchPattern, searchPattern, searchPattern];
+        
+        // Apply role-based filtering first
+        if (allowedLevels.length > 0) {
+            const levelPlaceholders = allowedLevels.map(function() { return '?'; }).join(',');
+            query += ' AND jlpt_level IN (' + levelPlaceholders + ')';
+            params = params.concat(allowedLevels);
         }
         
-        console.log(`✅ Query executed successfully`);
-        console.log(`  - Returned ${results.length} results`);
-        
-        if (results.length > 0) {
-            const jlptCounts = {};
-            results.forEach(item => {
-                const level = item.jlpt_level || 'NULL';
-                jlptCounts[level] = (jlptCounts[level] || 0) + 1;
-            });
-            console.log('  - JLPT distribution:', jlptCounts);
+        // Then apply user's JLPT filter if specified
+        let activeJlptFilter = jlptFilter;
+        if (activeJlptFilter && activeJlptFilter.trim() != '') {
+            if (activeJlptFilter == 'NULL') {
+                query += ' AND (jlpt_level IS NULL OR jlpt_level = "")';
+            } else if (allowedLevels.includes(activeJlptFilter) || allowedLevels.length == 0) {
+                query += ' AND jlpt_level = ?';
+                params.push(activeJlptFilter);
+            } else {
+                // User trying to access restricted content
+                return res.json([]);
+            }
         }
         
-        res.json(results);
-    });
+        query += ' ORDER BY frequency_rank LIMIT 500';
+        
+        db.query(query, params, function(err, results) {
+            if (err) {
+                console.error('❌ Database error:', err);
+                res.status(500).json({ error: 'Search failed' });
+                return;
+            }
+            res.json(results);
+        });
+    }
+    
+    if (req.isGuest) {
+        // Guests: N5 only
+        executeSearch(['N5']);
+    } else if (req.session.userId) {
+        // Check user role
+        db.query('SELECT role FROM users WHERE id = ?', [req.session.userId], function(err, userResult) {
+            if (err) {
+                return res.status(500).json({ error: 'Database error' });
+            }
+            
+            if (userResult.length == 0) {
+                return res.status(401).json({ error: 'User not found' });
+            }
+            
+            const userRole = userResult[0].role;
+            
+            if (userRole == 'registered') {
+                executeSearch(['N5', 'N4']);
+            } else if (userRole == 'paid') {
+                executeSearch([]); // No restrictions for paid users
+            }
+        });
+    } else {
+        executeSearch(['N5']); // Fallback to guest level
+    }
 });
 
 // Protected routes (require authentication)
