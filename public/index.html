@@ -616,7 +616,7 @@ function showMainApp() {
             <button class="nav-btn" onclick="showWords()">Word Dictionary</button>
             <button class="nav-btn" onclick="showQuiz()">Quiz</button>
             ${isAuthenticated ? '<button class="nav-btn" onclick="showProfile()">Profile</button>' : ''}
-            ${!isAuthenticated ? '<button class="nav-btn" onclick="showPricing()">Pricing</button>' : ''}
+            ${createPricingButton()}
             <button class="nav-btn" onclick="showComingSoon()">Coming Soon</button>
             <button class="nav-btn" onclick="showAbout()">About</button>
             <button class="nav-btn" onclick="showSources()">Sources</button>
@@ -634,8 +634,7 @@ function showMainApp() {
             <select id="jlptSelect" onchange="filterByJLPT()">
                 <option value="">All Levels</option>
                 <option value="N5">N5</option>
-                ${isAuthenticated ? '<option value="N4">N4</option><option value="N3">N3</option><option value="N2">N2</option><option value="N1">N1</option>' : ''}
-                ${isAuthenticated ? '<option value="NULL">No JLPT Level</option>' : ''}
+                ${getJLPTFilterOptions()}
             </select>
         </div>
         
@@ -683,9 +682,42 @@ function showMainApp() {
         }
     });
 
-    setTimeout(() => {
-    checkTemporaryPassword();
+    setTimeout(function() {
+        checkTemporaryPassword();
     }, 1000);
+}
+
+function createPricingButton() {
+    if (!isAuthenticated) {
+        // Guest user - normal pricing button
+        return '<button class="nav-btn" onclick="showPricing()">Pricing</button>';
+    } else if (currentUser && currentUser.role == 'registered') {
+        // Registered user - highlighted upgrade button
+        return '<button class="nav-btn upgrade-available" onclick="showPricing()">Upgrade</button>';
+    } else {
+        // Paid user - no pricing button needed
+        return '';
+    }
+}
+
+// Helper function to get JLPT filter options based on user role
+function getJLPTFilterOptions() {
+    if (!isAuthenticated) {
+        // Guest - N5 only (but they can't see the filter anyway)
+        return '';
+    } else if (currentUser && currentUser.role == 'registered') {
+        // Registered - N5 and N4
+        return '<option value="N4">N4</option>';
+    } else {
+        // Paid - all levels
+        return `
+            <option value="N4">N4</option>
+            <option value="N3">N3</option>
+            <option value="N2">N2</option>
+            <option value="N1">N1</option>
+            <option value="NULL">No JLPT Level</option>
+        `;
+    }
 }
 
 
@@ -693,6 +725,7 @@ function createUserHeader() {
     return `
         <div class="user-info">
             <span class="welcome-text">Welcome, ${currentUser.username}!</span>
+            <span class="user-role-badge ${currentUser.role}">${currentUser.role == 'paid' ? 'Full Access' : 'Free Account'}</span>
             <button class="logout-btn" onclick="logout()">Logout</button>
         </div>
     `;
