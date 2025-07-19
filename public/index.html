@@ -117,43 +117,96 @@ function showLoginScreen() {
         <div class="login-container">
             <div class="login-box">
                 <h1>🗾 Kanji Wizard | Japanese Learning App</h1>
-                <h2>Login Required</h2>
                 
-                <form id="loginForm" onsubmit="handleLogin(event)">
-                    <div class="login-field">
-                        <label for="username">Username:</label>
-                        <input type="text" id="username" name="username" required>
-                    </div>
-                    
-                    <div class="login-field">
-                        <label for="password">Password:</label>
-                        <input type="password" id="password" name="password" required>
-                    </div>
-                    
-                    <div class="login-field">
-                        <label class="checkbox-label">
-                            <input type="checkbox" id="rememberMe" checked>
-                            Remember me for 30 days
-                        </label>
-                    </div>
-                    
-                    <button type="submit" class="login-btn" id="loginButton">
-                        Login
-                    </button>
-                </form>
+                <!-- Tab Navigation -->
+                <div class="login-tabs">
+                    <button class="tab-btn active" onclick="showLoginTab()">Login</button>
+                    <button class="tab-btn" onclick="showRegisterTab()">Create Free Account</button>
+                </div>
                 
-                <div id="loginError" class="login-error" style="display: none;"></div>
+                <!-- Login Tab -->
+                <div id="loginTab" class="tab-content active">
+                    <h2>Login to Your Account</h2>
+                    
+                    <form id="loginForm" onsubmit="handleLogin(event)">
+                        <div class="login-field">
+                            <label for="username">Username:</label>
+                            <input type="text" id="username" name="username" required>
+                        </div>
+                        
+                        <div class="login-field">
+                            <label for="password">Password:</label>
+                            <input type="password" id="password" name="password" required>
+                        </div>
+                        
+                        <div class="login-field">
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="rememberMe" checked>
+                                Remember me for 30 days
+                            </label>
+                        </div>
+                        
+                        <button type="submit" class="login-btn" id="loginButton">
+                            Login
+                        </button>
+                    </form>
+                    
+                    <div id="loginError" class="login-error" style="display: none;"></div>
+                    
+                    <!-- Forgot Password Section -->
+                    <div class="forgot-password-section">
+                        <button type="button" class="forgot-password-link" onclick="showForgotPasswordModal()">
+                            🔑 Forgot Password?
+                        </button>
+                    </div>
+                </div>
                 
-                <!-- ADD THIS FORGOT PASSWORD SECTION -->
-                <div class="forgot-password-section">
-                    <button type="button" class="forgot-password-link" onclick="showForgotPasswordModal()">
-                        🔑 Forgot Password?
-                    </button>
+                <!-- Free Registration Tab -->
+                <div id="registerTab" class="tab-content">
+                    <h2>Create Free Account</h2>
+                    <p class="register-subtitle">Access N5 + N4 content with progress saving</p>
+                    
+                    <form id="registerForm" onsubmit="handleFreeRegistration(event)">
+                        <div class="login-field">
+                            <label for="regUsername">Username:</label>
+                            <input type="text" id="regUsername" name="username" required 
+                                   minlength="3" maxlength="20" pattern="[a-zA-Z0-9_]+"
+                                   title="3-20 characters, letters, numbers, and underscores only">
+                            <small>3-20 characters, letters, numbers, and underscores only</small>
+                            <div id="regUsernameStatus" class="username-status"></div>
+                        </div>
+                        
+                        <div class="login-field">
+                            <label for="regEmail">Email Address:</label>
+                            <input type="email" id="regEmail" name="email" required>
+                            <small>We'll send your login credentials to this email</small>
+                        </div>
+                        
+                        <div class="features-preview">
+                            <h4>✨ What You Get:</h4>
+                            <ul>
+                                <li>📚 Access to N5 and N4 content</li>
+                                <li>💾 Save your progress and quiz selections</li>
+                                <li>📊 Track your learning statistics</li>
+                                <li>🎯 Create custom quizzes</li>
+                            </ul>
+                        </div>
+                        
+                        <button type="submit" class="login-btn" id="registerButton">
+                            Create Free Account
+                        </button>
+                    </form>
+                    
+                    <div id="registerError" class="login-error" style="display: none;"></div>
+                    <div id="registerSuccess" class="register-success" style="display: none;"></div>
+                    
+                    <div class="upgrade-notice">
+                        <p><strong>Want all JLPT levels?</strong> Upgrade for just $9.99 after creating your account!</p>
                 </div>
                 
                 <div class="guest-section">
                     <h3>Or browse as guest</h3>
-                    <p>View N5-level kanji and vocabulary only (no quiz access)</p>
+                    <p>View N5-level content only (no progress saving)</p>
                     <button class="guest-btn" onclick="browseAsGuest()">
                         Browse as Guest
                     </button>
@@ -161,8 +214,194 @@ function showLoginScreen() {
             </div>
         </div>
     `;
+    
+    // Set up username validation for registration
+    setupRegisterUsernameValidation();
 }
 
+function showLoginTab() {
+    document.getElementById('loginTab').classList.add('active');
+    document.getElementById('registerTab').classList.remove('active');
+    document.querySelectorAll('.tab-btn')[0].classList.add('active');
+    document.querySelectorAll('.tab-btn')[1].classList.remove('active');
+}
+
+function showRegisterTab() {
+    document.getElementById('registerTab').classList.add('active');
+    document.getElementById('loginTab').classList.remove('active');
+    document.querySelectorAll('.tab-btn')[1].classList.add('active');
+    document.querySelectorAll('.tab-btn')[0].classList.remove('active');
+}
+
+function handleFreeRegistration(event) {
+    event.preventDefault();
+    
+    const username = document.getElementById('regUsername').value.trim();
+    const email = document.getElementById('regEmail').value.trim();
+    const registerButton = document.getElementById('registerButton');
+    const errorDiv = document.getElementById('registerError');
+    const successDiv = document.getElementById('registerSuccess');
+    
+    // Clear previous messages
+    errorDiv.style.display = 'none';
+    successDiv.style.display = 'none';
+    
+    // Validate inputs
+    if (!username || !email) {
+        showRegisterError('Please fill in all fields');
+        return;
+    }
+    
+    if (username.length < 3 || username.length > 20) {
+        showRegisterError('Username must be between 3 and 20 characters');
+        return;
+    }
+    
+    if (!/^[a-zA-Z0-9_]+$/.test(username)) {
+        showRegisterError('Username can only contain letters, numbers, and underscores');
+        return;
+    }
+    
+    if (!validateEmail(email)) {
+        showRegisterError('Please enter a valid email address');
+        return;
+    }
+    
+    // Check if username is available
+    const statusDiv = document.getElementById('regUsernameStatus');
+    if (!statusDiv.classList.contains('available')) {
+        showRegisterError('Please choose an available username');
+        return;
+    }
+    
+    // Disable button and show loading
+    registerButton.disabled = true;
+    registerButton.textContent = 'Creating Account...';
+    
+    fetch('/api/register-free', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ username: username, email: email })
+    })
+    .then(function(response) {
+        return response.json();
+    })
+    .then(function(data) {
+        if (data.success) {
+            showRegisterSuccess('Account created successfully! Check your email for login credentials.');
+            // Clear the form
+            document.getElementById('registerForm').reset();
+            statusDiv.innerHTML = '';
+            
+            // Switch to login tab after a delay
+            setTimeout(function() {
+                showLoginTab();
+            }, 3000);
+        } else {
+            showRegisterError(data.error || 'Registration failed');
+        }
+    })
+    .catch(function(error) {
+        console.error('Registration error:', error);
+        showRegisterError('Connection error. Please try again.');
+    })
+    .finally(function() {
+        registerButton.disabled = false;
+        registerButton.textContent = 'Create Free Account';
+    });
+}
+
+function showRegisterError(message) {
+    const errorDiv = document.getElementById('registerError');
+    errorDiv.textContent = message;
+    errorDiv.style.display = 'block';
+}
+
+function showRegisterSuccess(message) {
+    const successDiv = document.getElementById('registerSuccess');
+    successDiv.innerHTML = message;
+    successDiv.style.display = 'block';
+}
+
+function setupRegisterUsernameValidation() {
+    const usernameInput = document.getElementById('regUsername');
+    const statusDiv = document.getElementById('regUsernameStatus');
+    let debounceTimer;
+    
+    if (!usernameInput || !statusDiv) return;
+    
+    usernameInput.addEventListener('input', function() {
+        const username = this.value.trim();
+        
+        // Clear previous timer
+        clearTimeout(debounceTimer);
+        
+        // Reset status
+        statusDiv.innerHTML = '';
+        statusDiv.className = 'username-status';
+        
+        if (username.length < 3) {
+            if (username.length > 0) {
+                statusDiv.innerHTML = '⚠️ Username must be at least 3 characters';
+                statusDiv.className = 'username-status error';
+            }
+            return;
+        }
+        
+        if (username.length > 20) {
+            statusDiv.innerHTML = '⚠️ Username must be 20 characters or less';
+            statusDiv.className = 'username-status error';
+            return;
+        }
+        
+        if (!/^[a-zA-Z0-9_]+$/.test(username)) {
+            statusDiv.innerHTML = '⚠️ Only letters, numbers, and underscores allowed';
+            statusDiv.className = 'username-status error';
+            return;
+        }
+        
+        // Show checking status
+        statusDiv.innerHTML = '🔍 Checking availability...';
+        statusDiv.className = 'username-status checking';
+        
+        // Debounce the API call
+        debounceTimer = setTimeout(function() {
+            checkRegisterUsernameAvailability(username);
+        }, 500);
+    });
+}
+
+function checkRegisterUsernameAvailability(username) {
+    const statusDiv = document.getElementById('regUsernameStatus');
+    
+    fetch('/api/check-username', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ username: username })
+    })
+    .then(function(response) {
+        return response.json();
+    })
+    .then(function(data) {
+        if (data.available) {
+            statusDiv.innerHTML = '✅ Username available';
+            statusDiv.className = 'username-status available';
+        } else {
+            statusDiv.innerHTML = '❌ Username already taken';
+            statusDiv.className = 'username-status taken';
+        }
+    })
+    .catch(function(error) {
+        console.error('Error checking username:', error);
+        statusDiv.innerHTML = '⚠️ Could not check availability';
+        statusDiv.className = 'username-status error';
+    });
+}
+    
 function showForgotPasswordModal() {
     // Create modal if it doesn't exist
     let modal = document.getElementById('forgotPasswordModal');
