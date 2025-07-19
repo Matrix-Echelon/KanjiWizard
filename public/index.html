@@ -2174,101 +2174,322 @@ function showPricing() {
     document.getElementById('content').className = '';
     
     const content = document.getElementById('content');
+    
+    // Different content based on user status
+    if (!isAuthenticated) {
+        // Guest user - show full pricing page
+        showGuestPricing(content);
+    } else if (currentUser && currentUser.role == 'registered') {
+        // Registered user - show upgrade page
+        showRegisteredUpgrade(content);
+    } else {
+        // Paid user - show thank you message
+        showPaidUserMessage(content);
+    }
+}
+
+function showGuestPricing(content) {
     content.innerHTML = `
         <div class="pricing-page">
-            <h2>💰 Upgrade Your Learning</h2>
+            <h2>💰 Unlock Your Japanese Learning</h2>
             
             <div class="pricing-hero">
-                <h3>🚀 Unlock the Full Japanese Learning Experience</h3>
-                <p>You've tried our N5 demo - now get access to everything!</p>
+                <h3>🚀 Choose Your Learning Path</h3>
+                <p>Start free or unlock everything with our affordable one-time payment!</p>
             </div>
             
-            <div class="pricing-card">
+            <!-- Free Account Option -->
+            <div class="pricing-option free-option">
                 <div class="pricing-header">
-                    <h3>🎌 Full Access Account</h3>
+                    <h3>🆓 Free Account</h3>
                     <div class="price-display">
-                        <span class="price-amount"><s>$25.99</s> $15.99</span>
+                        <span class="price-amount">Free</span>
+                        <span class="price-period">forever</span>
+                    </div>
+                    <p class="price-subtitle">Perfect for beginners</p>
+                </div>
+                
+                <div class="features-list">
+                    <h4>✨ What You Get:</h4>
+                    <ul>
+                        <li>📚 <strong>N5 + N4 Content:</strong> 1,000+ kanji & vocabulary</li>
+                        <li>💾 <strong>Save Progress:</strong> Track your learning journey</li>
+                        <li>🎯 <strong>Custom Quizzes:</strong> Select your study materials</li>
+                        <li>📊 <strong>Basic Statistics:</strong> Monitor your progress</li>
+                    </ul>
+                </div>
+                
+                <div class="pricing-cta">
+                    <button class="register-btn primary" onclick="showRegisterFromPricing()">
+                        🆓 Create Free Account
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Full Access Option -->
+            <div class="pricing-option paid-option featured">
+                <div class="featured-badge">Most Popular</div>
+                <div class="pricing-header">
+                    <h3>🎌 Full Access</h3>
+                    <div class="price-display">
+                        <span class="price-amount">$9.99</span>
                         <span class="price-period">one-time payment</span>
                     </div>
                     <p class="price-subtitle">Lifetime access • No monthly fees</p>
                 </div>
                 
                 <div class="features-list">
-                    <h4>✨ What You Get:</h4>
+                    <h4>✨ Everything in Free, Plus:</h4>
                     <ul>
                         <li>📚 <strong>All JLPT Levels:</strong> N5, N4, N3, N2, N1 content</li>
                         <li>🔍 <strong>Complete Dictionary:</strong> 6,000+ kanji & vocabulary</li>
-                        <li>🎯 <strong>Custom Quizzes:</strong> Select your own study materials</li>
-                        <li>📊 <strong>Progress Tracking:</strong> Detailed statistics & analytics</li>
-                        <li>⚡ <strong>Unlimited Quizzes:</strong> No daily limits or restrictions</li>
-                        <li>📈 <strong>Performance Analytics:</strong> Track your improvement</li>
+                        <li>📈 <strong>Advanced Analytics:</strong> Detailed performance tracking</li>
                         <li>🎨 <strong>Frequency Sorting:</strong> Study most common words first</li>
-                        <li>💾 <strong>Save Progress:</strong> Never lose your learning data</li>
+                        <li>⚡ <strong>Premium Features:</strong> All future updates included</li>
                     </ul>
                 </div>
                 
-                <div class="value-comparison">
-                    <h4>💡 Compare the Value:</h4>
-                    <div class="comparison-grid">
-                        <div class="comparison-item">
-                            <span class="competitor">WaniKani:</span>
-                            <span class="competitor-price">$9/month = $108/year</span>
-                        </div>
-                        <div class="comparison-item">
-                            <span class="competitor">Busuu:</span>
-                            <span class="competitor-price">$8/month = $96/year</span>
-                        </div>
-                        <div class="comparison-item our-price">
-                            <span class="competitor">Kanji Wizard:</span>
-                            <span class="competitor-price">$15.99 one-time = LIFETIME</span>
-                        </div>
+                <div class="pricing-cta">
+                    <button class="upgrade-btn primary" onclick="startDirectPurchase()">
+                        🔐 Get Full Access - $9.99
+                    </button>
+                    <p class="cta-subtitle">Instant access • Secure payment via Stripe</p>
+                </div>
+            </div>
+            
+            <div class="value-comparison">
+                <h4>💡 Compare the Value:</h4>
+                <div class="comparison-grid">
+                    <div class="comparison-item">
+                        <span class="competitor">WaniKani:</span>
+                        <span class="competitor-price">$9/month = $108/year</span>
+                    </div>
+                    <div class="comparison-item">
+                        <span class="competitor">Busuu:</span>
+                        <span class="competitor-price">$8/month = $96/year</span>
+                    </div>
+                    <div class="comparison-item our-price">
+                        <span class="competitor">Kanji Wizard:</span>
+                        <span class="competitor-price">$9.99 one-time = LIFETIME</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="pricing-actions">
+                <button class="quiz-btn secondary" onclick="showQuiz()">Try Demo Quiz</button>
+                <button class="quiz-btn secondary" onclick="showAbout()">Learn More</button>
+            </div>
+        </div>
+    `;
+}
+
+function showRegisteredUpgrade(content) {
+    content.innerHTML = `
+        <div class="pricing-page">
+            <h2>🚀 Upgrade to Full Access</h2>
+            
+            <div class="upgrade-hero">
+                <h3>Ready for the Next Level?</h3>
+                <p>You've experienced N5 and N4 - now unlock N3, N2, and N1!</p>
+            </div>
+            
+            <div class="pricing-card featured">
+                <div class="pricing-header">
+                    <h3>🎌 Upgrade to Full Access</h3>
+                    <div class="price-display">
+                        <span class="price-amount">$9.99</span>
+                        <span class="price-period">one-time payment</span>
+                    </div>
+                    <p class="price-subtitle">Lifetime access • No monthly fees</p>
+                </div>
+                
+                <div class="upgrade-comparison">
+                    <div class="current-plan">
+                        <h4>✅ You Currently Have:</h4>
+                        <ul>
+                            <li>📚 N5 + N4 content access</li>
+                            <li>💾 Progress saving</li>
+                            <li>🎯 Custom quiz creation</li>
+                            <li>📊 Basic statistics</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="upgrade-benefits">
+                        <h4>🆙 Upgrade Unlocks:</h4>
+                        <ul>
+                            <li>📚 <strong>N3, N2, N1 Content:</strong> 5,000+ additional items</li>
+                            <li>📈 <strong>Advanced Analytics:</strong> Detailed performance insights</li>
+                            <li>🎨 <strong>Frequency Sorting:</strong> Optimize your study order</li>
+                            <li>⚡ <strong>All Future Features:</strong> Lifetime updates included</li>
+                        </ul>
                     </div>
                 </div>
                 
                 <div class="pricing-form">
-                    <h4>🛒 Get Started Now</h4>
+                    <h4>🛒 Complete Your Upgrade</h4>
                     
-                    <div class="email-input-section">
-                        <label for="customerEmail">Email Address:</label>
-                        <input type="email" id="customerEmail" placeholder="your@email.com" required>
-                        <small>We'll send your account confirmation to this email</small>
-                    </div>
-                    
-                    <div class="email-input-section">
-                        <label for="customerUsername">Choose Your Username:</label>
-                        <input type="text" id="customerUsername" placeholder="your_username" required 
-                               minlength="3" maxlength="20" pattern="[a-zA-Z0-9_]+" 
-                               title="Username must be 3-20 characters, letters, numbers, and underscores only">
-                        <small>3-20 characters, letters, numbers, and underscores only</small>
-                        <div id="usernameStatus" class="username-status"></div>
+                    <div class="user-info-display">
+                        <p><strong>Account:</strong> ${currentUser.username}</p>
+                        <p><strong>Email:</strong> ${currentUser.email}</p>
                     </div>
                     
                     <div class="pricing-cta">
-                        <button class="upgrade-btn primary" onclick="startCheckout()" id="checkoutBtn">
-                            🔐 Secure Checkout - $15.99
+                        <button class="upgrade-btn primary" onclick="startUpgradeProcess()" id="upgradeBtn">
+                            🔐 Upgrade Now - $9.99
                         </button>
                         <p class="cta-subtitle">Instant access • Secure payment via Stripe</p>
                         <p class="security-note">🔒 Your payment is secure and encrypted</p>
                     </div>
                 </div>
+                
+                <div class="money-back">
+                    <p>💰 <strong>7-day satisfaction guarantee</strong> - Contact support if not satisfied</p>
+                </div>
             </div>
             
-            <div class="pricing-footer">
-                <h4>❓ Questions?</h4>
-                <p>Try our demo quiz to see the quality, then upgrade when you're ready!</p>
-                <div class="pricing-actions">
-                    <button class="quiz-btn secondary" onclick="showQuiz()">Try Demo Quiz</button>
-                    <button class="quiz-btn secondary" onclick="showAbout()">Learn More</button>
-                </div>
+            <div class="pricing-actions">
+                <button class="quiz-btn secondary" onclick="showKanji()">Continue with Free Account</button>
+                <button class="quiz-btn secondary" onclick="showAbout()">Learn More</button>
             </div>
         </div>
     `;
-    
-    // Add username validation
-    setupUsernameValidation();
 }
 
-    function showComingSoon() {
+function showPaidUserMessage(content) {
+    content.innerHTML = `
+        <div class="pricing-page">
+            <h2>🎉 You Have Full Access!</h2>
+            
+            <div class="paid-user-hero">
+                <div class="success-icon">✨</div>
+                <h3>Thank You for Supporting Kanji Wizard!</h3>
+                <p>You have lifetime access to all JLPT levels and features.</p>
+            </div>
+            
+            <div class="access-summary">
+                <h4>🎌 Your Access Includes:</h4>
+                <div class="access-grid">
+                    <div class="access-item">
+                        <div class="access-icon">📚</div>
+                        <div class="access-text">
+                            <strong>All JLPT Levels</strong>
+                            <p>N5, N4, N3, N2, N1 content</p>
+                        </div>
+                    </div>
+                    <div class="access-item">
+                        <div class="access-icon">🎯</div>
+                        <div class="access-text">
+                            <strong>Unlimited Quizzes</strong>
+                            <p>Custom study sessions</p>
+                        </div>
+                    </div>
+                    <div class="access-item">
+                        <div class="access-icon">📊</div>
+                        <div class="access-text">
+                            <strong>Advanced Stats</strong>
+                            <p>Detailed progress tracking</p>
+                        </div>
+                    </div>
+                    <div class="access-item">
+                        <div class="access-icon">⚡</div>
+                        <div class="access-text">
+                            <strong>Future Updates</strong>
+                            <p>All new features included</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="coming-soon-preview">
+                <h4>🚀 Coming Soon for You:</h4>
+                <ul>
+                    <li>🎙️ Audio pronunciation guides</li>
+                    <li>💬 Sentence examples in context</li>
+                    <li>📱 Mobile app (iOS & Android)</li>
+                    <li>🏆 Achievement system</li>
+                </ul>
+            </div>
+            
+            <div class="pricing-actions">
+                <button class="quiz-btn primary" onclick="showQuiz()">Start Learning</button>
+                <button class="quiz-btn secondary" onclick="showProfile()">View Your Progress</button>
+                <button class="quiz-btn secondary" onclick="showComingSoon()">See What's Coming</button>
+            </div>
+        </div>
+    `;
+}
+
+function showRegisterFromPricing() {
+    showLoginScreen();
+    setTimeout(function() {
+        showRegisterTab();
+    }, 100);
+}
+
+function startDirectPurchase() {
+    // Redirect to create account with payment flow
+    showLoginScreen();
+    setTimeout(function() {
+        showRegisterTab();
+        
+        // Add notice about direct purchase
+        const registerTab = document.getElementById('registerTab');
+        if (registerTab) {
+            const notice = document.createElement('div');
+            notice.className = 'payment-notice';
+            notice.innerHTML = '<p><strong>💡 Want to skip the free account?</strong> <a href="#" onclick="switchToDirectPayment()">Go directly to full purchase</a></p>';
+            registerTab.insertBefore(notice, registerTab.firstChild.nextSibling.nextSibling);
+        }
+    }, 100);
+}
+
+function switchToDirectPayment() {
+    // Show original pricing form for direct payment
+    showLoginScreen();
+    // You could implement a direct payment form here
+}
+
+function startUpgradeProcess() {
+    const upgradeBtn = document.getElementById('upgradeBtn');
+    
+    if (!currentUser || !currentUser.email) {
+        alert('Error: User information not found. Please try logging out and back in.');
+        return;
+    }
+    
+    upgradeBtn.disabled = true;
+    upgradeBtn.innerHTML = '⏳ Redirecting to checkout...';
+    
+    fetch('/api/create-checkout-session', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ 
+            email: currentUser.email,
+            username: currentUser.username 
+        })
+    })
+    .then(function(response) {
+        return response.json();
+    })
+    .then(function(data) {
+        if (data.url) {
+            window.location.href = data.url;
+        } else {
+            throw new Error(data.error || 'Failed to create checkout session');
+        }
+    })
+    .catch(function(error) {
+        console.error('Upgrade error:', error);
+        alert('Error starting upgrade: ' + error.message);
+        
+        upgradeBtn.disabled = false;
+        upgradeBtn.innerHTML = '🔐 Upgrade Now - $9.99';
+    });
+}
+    
+function showComingSoon() {
     currentView = 'coming-soon';
     updateNavButtons('coming-soon');
     
