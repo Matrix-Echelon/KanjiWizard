@@ -3120,3 +3120,110 @@ body {
     }
 }
 
+.user-role-badge {
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: bold;
+    margin: 0 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.user-role-badge.registered {
+    background: #28a745;
+    color: white;
+}
+
+.user-role-badge.paid {
+    background: linear-gradient(135deg, #4a90e2, #357abd);
+    color: white;
+}
+
+/* Enhanced User Info Layout */
+.user-info {
+    margin-top: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+/* Upgrade Available Button */
+.nav-btn.upgrade-available {
+    background: linear-gradient(135deg, #ffc107, #ff8c00) !important;
+    color: #212529 !important;
+    font-weight: bold;
+    position: relative;
+    animation: pulse-upgrade 2s ease-in-out infinite;
+    box-shadow: 0 2px 8px rgba(255, 193, 7, 0.3);
+}
+
+.nav-btn.upgrade-available:hover {
+    background: linear-gradient(135deg, #e0a800, #e07b00) !important;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(255, 193, 7, 0.4);
+}
+
+.nav-btn.upgrade-available::after {
+    content: '🚀';
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    font-size: 12px;
+    animation: bounce-icon 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse-upgrade {
+    0%, 100% { 
+        transform: scale(1);
+        box-shadow: 0 2px 8px rgba(255, 193, 7, 0.3);
+    }
+    50% { 
+        transform: scale(1.05);
+        box-shadow: 0 4px 12px rgba(255, 193, 7, 0.5);
+    }
+}
+
+@keyframes bounce-icon {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-3px); }
+}
+
+/* Navigation Button Enhancements */
+.nav-btn {
+    position: relative;
+    overflow: visible;
+}
+
+/* User Badge Responsive Design */
+@media (max-width: 768px) {
+    .user-info {
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    .user-role-badge {
+        margin: 0;
+        font-size: 11px;
+        padding: 3px 10px;
+    }
+    
+    .nav-btn.upgrade-available::after {
+        top: -3px;
+        right: -3px;
+        font-size: 10px;
+    }
+}
+
+@media (max-width: 600px) {
+    .welcome-text {
+        font-size: 14px;
+    }
+    
+    .user-role-badge {
+        font-size: 10px;
+        padding: 2px 8px;
+    }
+}
