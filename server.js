@@ -551,8 +551,8 @@ app.post('/api/register-free', checkIPBlacklist, function(req, res) {
         
         // Check if username or email already exists
         db.query(
-            'SELECT id, username, email FROM users WHERE username = ? OR email = ?', 
-            [username.trim(), email.trim()], 
+            'SELECT id, username, email FROM users WHERE username = ?', 
+            [username.trim()], 
             function(err, results) {
                 if (err) {
                     console.error('❌ Database error during registration check:', err);
@@ -563,9 +563,6 @@ app.post('/api/register-free', checkIPBlacklist, function(req, res) {
                     const existing = results[0];
                     if (existing.username == username.trim()) {
                         return res.status(400).json({ error: 'Username already taken' });
-                    }
-                    if (existing.email == email.trim()) {
-                        return res.status(400).json({ error: 'Email address already registered' });
                     }
                 }
                 
