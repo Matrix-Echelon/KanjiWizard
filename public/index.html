@@ -2261,6 +2261,13 @@ function displayProfile(overallStats, kanjiByJLPT, wordsByJLPT, recentPerformanc
                     <p class="profile-subtitle">Here's your Japanese learning progress</p>
                 </div>
             </div>
+
+            <div class="profile-actions">
+                <button class="quiz-btn primary" onclick="showQuiz()">Take a Quiz</button>
+                <button class="quiz-btn secondary" onclick="showKanji()">Study Kanji</button>
+                <button class="quiz-btn secondary" onclick="showWords()">Study Words</button>
+              <button class="quiz-btn focus-list-btn" onclick="showFocusListModal()">🎯 View Focus List</button>
+            </div>
             
             <div class="stats-overview">
                 <div class="stats-card">
@@ -2333,14 +2340,127 @@ function displayProfile(overallStats, kanjiByJLPT, wordsByJLPT, recentPerformanc
                 </div>
             </div>
             `}
-            
-            <div class="profile-actions">
-                <button class="quiz-btn primary" onclick="showQuiz()">Take a Quiz</button>
-                <button class="quiz-btn secondary" onclick="showKanji()">Study Kanji</button>
-                <button class="quiz-btn secondary" onclick="showWords()">Study Words</button>
+        </div>
+    `;
+}
+
+function displayFocusListItems(items) {
+    const contentDiv = document.getElementById('focusListContent');
+    
+    if (items.length === 0) {
+        contentDiv.innerHTML = `
+            <div class="no-focus-items">
+                <h3>🎯 No Focus Items Yet</h3>
+                <p>Items you get wrong in quizzes will automatically be added here.</p>
+                <p>You can also manually add items using the "🎯 Focus" button on kanji/word cards.</p>
+                <button class="quiz-btn primary" onclick="closeFocusListModal(); showQuiz();">
+                    Take a Quiz
+                </button>
+            </div>
+        `;
+        return;
+    }
+    
+    // Separate kanji and words
+    const kanjiItems = items.filter(item => item.item_type === 'kanji');
+    const wordItems = items.filter(item => item.item_type === 'word');
+    
+    let html = `
+        <div class="focus-list-stats">
+            <div class="focus-stat">
+                <span class="focus-stat-number">${items.length}</span>
+                <span class="focus-stat-label">Total Items</span>
+            </div>
+            <div class="focus-stat">
+                <span class="focus-stat-number">${kanjiItems.length}</span>
+                <span class="focus-stat-label">Kanji</span>
+            </div>
+            <div class="focus-stat">
+                <span class="focus-stat-number">${wordItems.length}</span>
+                <span class="focus-stat-label">Words</span>
             </div>
         </div>
     `;
+    
+    if (kanjiItems.length > 0) {
+        html += `
+            <div class="focus-section">
+                <h3>📝 Kanji (${kanjiItems.length})</h3>
+                <div class="focus-items-grid">
+                    ${kanjiItems.map(item => `
+                        <div class="focus-item">
+                            <div class="focus-item-char">${item.kanji_char}</div>
+                            <div class="focus-item-meaning">${item.meaning}</div>
+                            <button class="remove-focus-btn" onclick="removeFocusItem('kanji', ${item.item_id})">
+                                ✕
+                            </button>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+    }
+    
+    if (wordItems.length > 0) {
+        html += `
+            <div class="focus-section">
+                <h3>💬 Words (${wordItems.length})</h3>
+                <div class="focus-items-grid">
+                    ${wordItems.map(item => `
+                        <div class="focus-item">
+                            <div class="focus-item-word">${item.word}</div>
+                            <div class="focus-item-reading">${item.reading || ''}</div>
+                            <div class="focus-item-meaning">${item.meaning}</div>
+                            <button class="remove-focus-btn" onclick="removeFocusItem('word', ${item.item_id})">
+                                ✕
+                            </button>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+    }
+    
+    html += `
+        <div class="focus-actions">
+            <button class="quiz-btn primary" onclick="startFocusQuiz()">
+                🎯 Quiz Focus Items
+            </button>
+            <button class="quiz-btn secondary" onclick="closeFocusListModal()">
+                Close
+            </button>
+        </div>
+    `;
+    
+    contentDiv.innerHTML = html;
+}
+
+// Remove item from focus list (from modal)
+function removeFocusItem(itemType, itemId) {
+    const userId = getCurrentUserId();
+    
+    fetch(`/api/focus-list/${userId}/${itemType}/${itemId}`, {
+        method: 'DELETE'
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            loadFocusListItems(); // Reload the list
+        } else {
+            alert('Failed to remove item from focus list');
+        }
+    })
+    .catch(error => {
+        console.error('Error removing from focus list:', error);
+        alert('Error removing item from focus list');
+    });
+}
+
+// Start a quiz with only focus items
+function startFocusQuiz() {
+    // This will be implemented in the next step
+    alert('Focus quiz coming soon!');
+    closeFocusListModal();
 }
 
 function showAll() {
