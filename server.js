@@ -925,20 +925,32 @@ app.post('/api/create-checkout-session', paymentLimiter, async (req, res) => {
         }
         
         // Check username availability (but allow existing users with same email to upgrade)
+        // Check if this is an upgrade (user already exists with this email)
         const existingUser = await new Promise((resolve, reject) => {
-            db.query('SELECT id, email FROM users WHERE username = ?', [username.trim()], (err, results) => {
+            db.query('SELECT id, username, email FROM users WHERE email = ?', [email.trim()], (err, results) => {
                 if (err) reject(err);
                 else resolve(results);
             });
         });
         
         if (existingUser.length > 0) {
-            // Username exists - check if it's the same user trying to upgrade
-            if (existingUser[0].email !== email.trim()) {
-                return res.status(400).json({ error: 'Username is already taken by another user' });
+            // This is an upgrade - make sure they're using their existing username
+            if (existingUser[0].username !== username.trim()) {
+                return res.status(400).json({ error: 'Please use your existing username: ' + existingUser[0].username });
             }
-            // Same user upgrading - allow it
             console.log('🔄 Existing user upgrading:', email);
+        } else {
+            // This is a new user - check username availability
+            const usernameCheck = await new Promise((resolve, reject) => {
+                db.query('SELECT id FROM users WHERE username = ?', [username.trim()], (err, results) => {
+                    if (err) reject(err);
+                    else resolve(results.length === 0);
+                });
+            });
+            
+            if (!usernameCheck) {
+                return res.status(400).json({ error: 'Username is already taken' });
+            }
         }
         
         console.log('💳 Creating checkout session for:', email, 'with username:', username);
