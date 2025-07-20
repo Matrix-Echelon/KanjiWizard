@@ -1386,8 +1386,8 @@ app.post('/api/logout', (req, res) => {
 
 app.get('/api/auth-status', (req, res) => {
     if (req.session.userId) {
-        // Get current user data including temp_pass status
-        db.query('SELECT id, username, email, temp_pass FROM users WHERE id = ?', [req.session.userId], (err, results) => {
+        // Get current user data including temp_pass status AND role
+        db.query('SELECT id, username, email, temp_pass, role FROM users WHERE id = ?', [req.session.userId], (err, results) => {
             if (err || results.length === 0) {
                 res.json({ authenticated: false });
                 return;
@@ -1399,7 +1399,8 @@ app.get('/api/auth-status', (req, res) => {
                     id: results[0].id,
                     username: results[0].username,
                     email: results[0].email,
-                    temp_pass: results[0].temp_pass
+                    temp_pass: results[0].temp_pass,
+                    role: results[0].role
                 }
             });
         });
