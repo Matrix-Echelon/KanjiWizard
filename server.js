@@ -1240,8 +1240,25 @@ async function handleSuccessfulPayment(session) {
     try {
         const email = session.customer_email || session.metadata.customer_email;
         const chosenUsername = session.metadata.chosen_username;
-        const paymentIntentId = session.payment_intent;
+        const paymentIntentId = session.payment_intent; // MOVE THIS UP
         const amount = session.amount_total / 100;
+        
+        // 🔧 CHECK IF ALREADY PROCESSED (AFTER paymentIntentId is defined)
+        const existingPayment = await new Promise((resolve, reject) => {
+            db.query(
+                'SELECT id FROM payments WHERE payment_intent_id = ?',
+                [paymentIntentId],
+                (err, results) => {
+                    if (err) reject(err);
+                    else resolve(results);
+                }
+            );
+        });
+        
+        if (existingPayment.length > 0) {
+            console.log('✅ Payment already processed, skipping:', paymentIntentId);
+            return; // Exit early
+        }
         
         console.log('💰 Processing successful payment:', {
             email: email,
@@ -1289,7 +1306,7 @@ async function handleSuccessfulPayment(session) {
             );
         });
         
-        // 🔧 FIX: Check if user already exists (THIS WAS MISSING!)
+        // Check if user already exists
         const existingUser = await new Promise((resolve, reject) => {
             db.query(
                 'SELECT id, username, email, role FROM users WHERE email = ? AND username = ?',
@@ -1322,21 +1339,26 @@ async function handleSuccessfulPayment(session) {
                         } else {
                             console.log('✅ User upgraded to paid:', email, 'username:', chosenUsername);
                             
-                            // Send upgrade email (no credentials)
-                            const upgradeEmailHtml = createUpgradeEmailHTML(email, chosenUsername, amount);
-                            console.log('📧 Sending upgrade confirmation email to:', email);
-                            
-                            const emailSent = await sendEmail(
-                                email,
-                                '🎉 Welcome to Kanji Wizard - Your Account has been Upgraded!',
-                                upgradeEmailHtml,
-                                'upgrade'
-                            );
-                            
-                            if (!emailSent) {
-                                console.error('❌ Failed to send upgrade email to:', email);
-                            } else {
-                                console.log('✅ Upgrade email sent successfully to:', email);
+                            // Send upgrade email (no credentials) - FIXED TRY-CATCH
+                            try {
+                                const upgradeEmailHtml = createUpgradeEmailHTML(email, chosenUsername, amount);
+                                console.log('📧 Sending upgrade confirmation email to:', email);
+                                
+                                const emailSent = await sendEmail(
+                                    email,
+                                    '🎉 Welcome to Kanji Wizard - Your Account has been Upgraded!',
+                                    upgradeEmailHtml,
+                                    'upgrade'
+                                );
+                                
+                                if (!emailSent) {
+                                    console.error('❌ Failed to send upgrade email to:', email);
+                                } else {
+                                    console.log('✅ Upgrade email sent successfully to:', email);
+                                }
+                            } catch (emailError) {
+                                console.error('❌ Email error (not blocking payment):', emailError);
+                                // Don't re-throw - payment should still be considered successful
                             }
                             
                             resolve(upgradeResult);
@@ -1359,21 +1381,26 @@ async function handleSuccessfulPayment(session) {
                         } else {
                             console.log('✅ User account created for:', email, 'with username:', chosenUsername, 'and role: paid');
                             
-                            // Send welcome email (with credentials)
-                            const welcomeEmailHtml = createWelcomeEmailHTML(email, chosenUsername, tempPassword, amount);
-                            console.log('📧 Sending welcome email to:', email);
-                            
-                            const emailSent = await sendEmail(
-                                email,
-                                '🎉 Welcome to Kanji Wizard - Your Account is Ready!',
-                                welcomeEmailHtml,
-                                'payment_confirmation'
-                            );
-                            
-                            if (!emailSent) {
-                                console.error('❌ Failed to send welcome email to:', email);
-                            } else {
-                                console.log('✅ Welcome email sent successfully to:', email);
+                            // Send welcome email (with credentials) - ADDED TRY-CATCH
+                            try {
+                                const welcomeEmailHtml = createWelcomeEmailHTML(email, chosenUsername, tempPassword, amount);
+                                console.log('📧 Sending welcome email to:', email);
+                                
+                                const emailSent = await sendEmail(
+                                    email,
+                                    '🎉 Welcome to Kanji Wizard - Your Account is Ready!',
+                                    welcomeEmailHtml,
+                                    'payment_confirmation'
+                                );
+                                
+                                if (!emailSent) {
+                                    console.error('❌ Failed to send welcome email to:', email);
+                                } else {
+                                    console.log('✅ Welcome email sent successfully to:', email);
+                                }
+                            } catch (emailError) {
+                                console.error('❌ Email error (not blocking payment):', emailError);
+                                // Don't re-throw - payment should still be considered successful
                             }
                             
                             resolve(result);
@@ -1434,6 +1461,7 @@ async function handleSuccessfulPayment(session) {
         throw error;
     }
 }
+
 // Add this test endpoint to your server.js (remove after testing)
 app.get('/api/webhook-test', (req, res) => {
     console.log('🧪 Webhook test endpoint hit');
