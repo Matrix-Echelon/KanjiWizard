@@ -449,6 +449,16 @@ app.use(session({
     }
 }));
 
+app.use((req, res, next) => {
+    res.setHeader('Content-Security-Policy', 
+        "default-src 'self'; " +
+        "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.google.com https://www.gstatic.com; " +
+        "frame-src https://www.google.com; " +
+        "connect-src 'self' https://www.google.com;"
+    );
+    next();
+});
+
 app.use('/webhook', (req, res, next) => {
     console.log('📨 Webhook request received:');
     console.log('  - Method:', req.method);
