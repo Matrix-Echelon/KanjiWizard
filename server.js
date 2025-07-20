@@ -451,8 +451,14 @@ app.use(session({
 
 // Disable CSP completely
 app.use((req, res, next) => {
+    // Remove existing CSP headers
     res.removeHeader('Content-Security-Policy');
     res.removeHeader('Content-Security-Policy-Report-Only');
+    res.removeHeader('X-Content-Security-Policy');
+    
+    // Set a very permissive CSP
+    res.setHeader('Content-Security-Policy', "default-src * 'unsafe-inline' 'unsafe-eval' data: blob:;");
+    
     next();
 });
 
