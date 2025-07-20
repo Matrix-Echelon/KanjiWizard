@@ -1582,7 +1582,8 @@ function saveQuizSession() {
             itemType: result.itemType,
             itemId: result.itemId,
             wasCorrect: result.isCorrect,
-            userAnswer: result.userAnswer
+            userAnswer: result.userAnswer,
+            timeTaken: result.timeTaken || null
         }))
     };
 
@@ -1612,6 +1613,8 @@ function showQuestion() {
     if (currentQuestionIndex === 0) {
     quizStartTime = Date.now();
     }
+
+    window.currentQuestionStartTime = Date.now();
     
     if (currentQuestionIndex >= quizData.length) {
         showQuizComplete();
@@ -1760,6 +1763,11 @@ function selectAnswer(selectedAnswer, correctAnswer, selectedIndex) {
     
     hasAnswered = true;
     const isCorrect = selectedAnswer === correctAnswer;
+
+    const questionEndTime = Date.now();
+    const questionStartTime = window.currentQuestionStartTime || questionEndTime;
+    const timeTaken = Math.round((questionEndTime - questionStartTime) / 1000); // seconds
+    
     
     // Store result locally for scoring
     quizResults.push({ 
@@ -1767,7 +1775,8 @@ function selectAnswer(selectedAnswer, correctAnswer, selectedIndex) {
         itemType: currentQuestion.item_type,
         itemId: currentQuestion.id,
         userAnswer: selectedAnswer,
-        correctAnswer: correctAnswer
+        correctAnswer: correctAnswer,
+        timeTaken: timeTaken
     });
     
     // Save to database
