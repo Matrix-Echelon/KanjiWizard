@@ -2192,6 +2192,54 @@ app.post('/api/focus-list', requireAuth, (req, res) => {
     });
 });
 
+// Get user's complete focus list with item details
+app.get('/api/focus-list/:userId', requireAuth, (req, res) => {
+    const { userId } = req.params;
+    
+    if (parseInt(userId) !== req.session.userId) {
+        return res.status(403).json({ error: 'Access denied' });
+    }
+    
+    const query = `
+        SELECT 
+            ufi.*,
+            CASE 
+                WHEN ufi.item_type = 'kanji' THEN k.kanji_char
+                WHEN ufi.item_type = 'word' THEN w.word
+            END as display_item,
+            CASE 
+                WHEN ufi.item_type = 'kanji' THEN k.meaning
+                WHEN ufi.item_type = 'word' THEN w.meaning
+            END as meaning,
+            CASE 
+                WHEN ufi.item_type = 'kanji' THEN k.kanji_char
+                ELSE NULL
+            END as kanji_char,
+            CASE 
+                WHEN ufi.item_type = 'word' THEN w.word
+                ELSE NULL
+            END as word,
+            CASE 
+                WHEN ufi.item_type = 'word' THEN w.reading
+                ELSE NULL
+            END as reading
+        FROM user_focus_items ufi
+        LEFT JOIN kanji k ON ufi.item_type = 'kanji' AND ufi.item_id = k.id
+        LEFT JOIN words w ON ufi.item_type = 'word' AND ufi.item_id = w.id
+        WHERE ufi.user_id = ?
+        ORDER BY ufi.added_at DESC
+    `;
+    
+    db.query(query, [userId], (err, results) => {
+        if (err) {
+            console.error('❌ Error fetching focus list:', err);
+            return res.status(500).json({ error: 'Database error' });
+        }
+        
+        res.json(results);
+    });
+});
+
 // Save quiz session with details
 app.post('/api/save-quiz-session', requireAuth, (req, res) => {
     const { userId, sessionType, totalQuestions, correctAnswers, sessionDuration, questionDetails } = req.body;
