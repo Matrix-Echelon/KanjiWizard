@@ -451,14 +451,15 @@ app.use(session({
 
 // Disable CSP completely
 app.use((req, res, next) => {
-    // Remove existing CSP headers
-    res.removeHeader('Content-Security-Policy');
-    res.removeHeader('Content-Security-Policy-Report-Only');
-    res.removeHeader('X-Content-Security-Policy');
-    
-    // Set a very permissive CSP
-    res.setHeader('Content-Security-Policy', "default-src * 'unsafe-inline' 'unsafe-eval' data: blob:;");
-    
+    // Override ALL security headers
+    const originalSetHeader = res.setHeader;
+    res.setHeader = function(name, value) {
+        if (name.toLowerCase().includes('content-security-policy')) {
+            // Replace any CSP with our permissive one
+            return originalSetHeader.call(this, name, "default-src * 'unsafe-inline' 'unsafe-eval' data: blob:;");
+        }
+        return originalSetHeader.call(this, name, value);
+    };
     next();
 });
 
