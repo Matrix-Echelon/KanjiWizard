@@ -66,7 +66,7 @@
         <button class="page-btn" id="nextBtn" onclick="nextPage()">Next &raquo;</button>
     </div>
 
-<script src="https://www.google.com/recaptcha/api.js?render=6LdnA4krAAAAACqy1umabGKSSfkT2Bt35LLRSvPA"></script>
+<!--script src="https://www.google.com/recaptcha/api.js?render=6LdnA4krAAAAACqy1umabGKSSfkT2Bt35LLRSvPA"-->
 <script>
 let currentView = 'kanji';
 let currentPage = 1;
@@ -191,6 +191,18 @@ function showLoginScreen() {
                             <input type="email" id="regEmail" name="email" required>
                             <small>We'll send your login credentials to this email</small>
                         </div>
+
+                        <div class="login-field">
+                            <label for="mathQuestion">Security Question:</label>
+                            <div id="mathQuestion">Loading...</div>
+                            <input type="number" id="mathAnswer" name="mathAnswer" required 
+                                   placeholder="Enter your answer">
+                            <input type="hidden" id="mathToken" name="mathToken">
+                        </div>  
+
+                        <input type="text" name="website" id="website" 
+                       style="display: none !important; visibility: hidden !important;" 
+                       tabindex="-1" autocomplete="off">
                         
                         <div class="features-preview">
                             <h4>✨ What You Get:</h4>
@@ -222,6 +234,30 @@ function showLoginScreen() {
     setupRegisterUsernameValidation();
 }
 
+function loadMathChallenge() {
+    fetch('/api/math-challenge')
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('mathQuestion').textContent = data.question;
+            document.getElementById('mathToken').value = data.token;
+        })
+        .catch(error => {
+            console.error('Math challenge error:', error);
+            document.getElementById('mathQuestion').textContent = 'What is 2 + 2?';
+        });
+}
+
+// Call this when registration tab is shown
+function showRegisterTab() {
+    document.getElementById('registerTab').classList.add('active');
+    document.getElementById('loginTab').classList.remove('active');
+    document.querySelectorAll('.tab-btn')[1].classList.add('active');
+    document.querySelectorAll('.tab-btn')[0].classList.remove('active');
+    
+    // Load math challenge when tab opens
+    loadMathChallenge();
+}
+
 function showLoginTab() {
     document.getElementById('loginTab').classList.add('active');
     document.getElementById('registerTab').classList.remove('active');
@@ -241,6 +277,8 @@ function handleFreeRegistration(event) {
     
     const username = document.getElementById('regUsername').value.trim();
     const email = document.getElementById('regEmail').value.trim();
+    const mathAnswer = document.getElementById('mathAnswer').value;
+    const mathToken = document.getElementById('mathToken').value;
     const registerButton = document.getElementById('registerButton');
     const errorDiv = document.getElementById('registerError');
     const successDiv = document.getElementById('registerSuccess');
@@ -248,13 +286,19 @@ function handleFreeRegistration(event) {
     // Clear previous messages
     errorDiv.style.display = 'none';
     successDiv.style.display = 'none';
-    
-    // Validate inputs
+
+    // Validate inputs (your existing validation)
     if (!username || !email) {
         showRegisterError('Please fill in all fields');
         return;
     }
     
+    if (!mathAnswer) {
+        showRegisterError('Please solve the math problem');
+        return;
+    }
+    
+    // Validate inputs
     if (username.length < 3 || username.length > 20) {
         showRegisterError('Username must be between 3 and 20 characters');
         return;
@@ -279,38 +323,47 @@ function handleFreeRegistration(event) {
     
     // Disable button and show loading
     registerButton.disabled = true;
-    registerButton.textContent = 'Verifying you\'re human...';
+    registerButton.textContent = 'Creating Account...';
     
-    // 🛡️ Safe reCAPTCHA verification with error handling
-    try {
-        if (typeof grecaptcha === 'undefined') {
-            console.warn('reCAPTCHA not loaded, proceeding without verification');
-            submitRegistration(username, email, null, registerButton, errorDiv, successDiv);
-            return;
-        }
-        
-        grecaptcha.ready(function() {
-            console.log('reCAPTCHA ready, executing...');
+ fetch('/api/register-free', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ 
+            username: username, 
+            email: email,
+            website: '', // Honeypot field
+            mathAnswer: mathAnswer,
+            mathToken: mathToken
+        })
+    })
+    .then(function(response) {
+        return response.json();
+    })
+    .then(function(data) {
+        if (data.success) {
+            showRegisterSuccess('Account created successfully! Check your email for login credentials.');
+            document.getElementById('registerForm').reset();
+            document.getElementById('regUsernameStatus').innerHTML = '';
             
-            grecaptcha.execute('6LdnA4krAAAAACqy1umabGKSSfkT2Bt35LLRSvPA', {
-                action: 'register'
-            }).then(function(token) {
-                console.log('reCAPTCHA token received:', token ? 'Yes' : 'No');
-                submitRegistration(username, email, token, registerButton, errorDiv, successDiv);
-            }).catch(function(error) {
-                console.error('reCAPTCHA execution error:', error);
-                showRegisterError('Security verification failed. Please try again.');
-                registerButton.disabled = false;
-                registerButton.textContent = 'Create Free Account';
-            });
-        });
-        
-    } catch (error) {
-        console.error('reCAPTCHA integration error:', error);
-        console.log('Proceeding without reCAPTCHA verification');
-        submitRegistration(username, email, null, registerButton, errorDiv, successDiv);
-    }
+            setTimeout(function() {
+                showLoginTab();
+            }, 3000);
+        } else {
+            showRegisterError(data.error || 'Registration failed');
+        }
+    })
+    .catch(function(error) {
+        console.error('Registration error:', error);
+        showRegisterError('Connection error. Please try again.');
+    })
+    .finally(function() {
+        registerButton.disabled = false;
+        registerButton.textContent = 'Create Free Account';
+    });
 }
+
 
 // 🔧 UPDATED: Make submitRegistration handle null tokens gracefully
 function submitRegistration(username, email, recaptchaToken, registerButton, errorDiv, successDiv) {
