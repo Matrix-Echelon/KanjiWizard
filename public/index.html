@@ -2594,7 +2594,7 @@ function loadFocusListItems() {
 function startFocusQuiz() {
     const userId = getCurrentUserId();
     
-    // Load focus items and start quiz
+    // Load focus items first to see how many we have
     fetch(`/api/focus-list/${userId}`)
         .then(response => response.json())
         .then(focusItems => {
@@ -2606,43 +2606,104 @@ function startFocusQuiz() {
             // Close the modal
             closeFocusListModal();
             
-            // Set up quiz with focus items only
-            currentQuizType = 'mixed'; // Focus quiz is always mixed
-            currentQuestionIndex = 0;
-            quizResults = [];
-            hasAnswered = false;
-            
-            // 🔧 FIX: Convert focus items to proper quiz format with all needed data
-            quizData = focusItems.map(item => ({
-                id: item.item_id,
-                item_type: item.item_type,
-                kanji_char: item.kanji_char,
-                word: item.word,
-                reading: item.reading,
-                meaning: item.meaning,
-                onyomi: item.onyomi || null,
-                kunyomi: item.kunyomi || null
-            }));
-            
-            // Shuffle and limit to reasonable size
-            quizData = shuffleArray(quizData).slice(0, Math.min(20, quizData.length));
-            
-            // Load all items for wrong answers
-            Promise.all([
-                fetch('/api/kanji').then(response => response.json()),
-                fetch('/api/words').then(response => response.json())
-            ]).then(([allKanji, allWords]) => {
-                window.allKanjiForAnswers = allKanji;
-                window.allWordsForAnswers = allWords;
-                
-                // Start the focus quiz
-                showQuestion();
-            });
+            // 🆕 Show focus quiz setup instead of starting immediately
+            showFocusQuizSetup(focusItems);
         })
         .catch(error => {
             console.error('Error starting focus quiz:', error);
             alert('Error starting focus quiz');
         });
+}
+
+//  Function to show focus quiz setup
+function showFocusQuizSetup(focusItems) {
+    const content = document.getElementById('content');
+    content.className = '';
+    
+    const kanjiCount = focusItems.filter(item => item.item_type === 'kanji').length;
+    const wordCount = focusItems.filter(item => item.item_type === 'word').length;
+    const maxQuestions = focusItems.length;
+    
+    content.innerHTML = `
+        <div class="quiz-setup">
+            <h2>🎯 Focus Quiz Setup</h2>
+            
+            <div class="focus-quiz-info">
+                <h3>Your Focus Items:</h3>
+                <div class="focus-quiz-stats">
+                    <div class="focus-stat">
+                        <span class="focus-stat-number">${focusItems.length}</span>
+                        <span class="focus-stat-label">Total Items</span>
+                    </div>
+                    <div class="focus-stat">
+                        <span class="focus-stat-number">${kanjiCount}</span>
+                        <span class="focus-stat-label">Kanji</span>
+                    </div>
+                    <div class="focus-stat">
+                        <span class="focus-stat-number">${wordCount}</span>
+                        <span class="focus-stat-label">Words</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="quiz-options">
+                <label for="focusQuizCount">How many questions?</label>
+                <input type="number" id="focusQuizCount" min="1" max="${maxQuestions}" value="${Math.min(10, maxQuestions)}">
+                <small>Maximum: ${maxQuestions} (all your focus items)</small>
+            </div>
+            
+            <div class="quiz-actions">
+                <button class="quiz-btn primary" onclick="startActualFocusQuiz(${JSON.stringify(focusItems).replace(/"/g, '&quot;')})">🎯 Start Focus Quiz</button>
+                <button class="quiz-btn secondary" onclick="showProfile()">Back to Profile</button>
+            </div>
+        </div>
+    `;
+}
+
+// Actually start the focus quiz with selected count
+function startActualFocusQuiz(focusItems) {
+    const quizCount = parseInt(document.getElementById('focusQuizCount').value);
+    
+    if (quizCount < 1 || quizCount > focusItems.length) {
+        alert(`Please enter a number between 1 and ${focusItems.length}`);
+        return;
+    }
+    
+    // Set up quiz with focus items only
+    currentQuizType = 'focus'; // 🆕 CHANGE TO 'focus' for tracking
+    currentQuestionIndex = 0;
+    quizResults = [];
+    hasAnswered = false;
+    
+    // Convert focus items to proper quiz format
+    quizData = focusItems.map(item => ({
+        id: item.item_id,
+        item_type: item.item_type,
+        kanji_char: item.kanji_char,
+        word: item.word,
+        reading: item.reading,
+        meaning: item.meaning,
+        onyomi: item.onyomi || null,
+        kunyomi: item.kunyomi || null
+    }));
+    
+    // Shuffle and limit to selected count
+    quizData = shuffleArray(quizData).slice(0, quizCount);
+    
+    const content = document.getElementById('content');
+    content.innerHTML = '<div class="loading">Preparing focus quiz...</div>';
+    
+    // Load all items for wrong answers
+    Promise.all([
+        fetch('/api/kanji').then(response => response.json()),
+        fetch('/api/words').then(response => response.json())
+    ]).then(([allKanji, allWords]) => {
+        window.allKanjiForAnswers = allKanji;
+        window.allWordsForAnswers = allWords;
+        
+        // Start the focus quiz
+        showQuestion();
+    });
 }
 
 function showAll() {
