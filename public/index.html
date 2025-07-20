@@ -705,13 +705,12 @@ function createPricingButton() {
 // Helper function to get JLPT filter options based on user role
 function getJLPTFilterOptions() {
     if (!isAuthenticated) {
-        // Guest - N5 only (but they can't see the filter anyway)
         return '';
     } else if (currentUser && currentUser.role == 'registered') {
-        // Registered - N5 and N4
+        // Registered users: only N4 (they already see N5 in the default option)
         return '<option value="N4">N4</option>';
     } else {
-        // Paid - all levels
+        // Paid users: all levels
         return `
             <option value="N4">N4</option>
             <option value="N3">N3</option>
