@@ -1421,7 +1421,7 @@ function startGuestQuiz(quizType) {
 
 function startGuestQuizWithType(quizType) {
 
-    currentQuizType = quizType;
+    currentQuizType = quizType === 'words' ? 'word' : quizType;
     currentQuestionIndex = 0;
     quizResults = [];
     hasAnswered = false;
@@ -1486,7 +1486,7 @@ function setupQuizType(quizType, maxItems) {
 
 function startQuizWithType(quizType, maxQuestions) {
 
-    currentQuizType = quizType;
+    currentQuizType = quizType === 'words' ? 'word' : quizType;
     
     const quizCount = parseInt(document.getElementById('quizCount').value);
     
