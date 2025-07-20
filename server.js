@@ -18,7 +18,6 @@ function validateEnvironment() {
         console.log('✅ All required environment variables are set');
         console.log('🔐 Using Stripe key:', process.env.STRIPE_SECRET_KEY.substring(0, 12) + '...');
         console.log('🪝 Webhook secret configured:', !!process.env.STRIPE_WEBHOOK_SECRET);
-        console.log('🛡️ reCAPTCHA configured:', !!process.env.RECAPTCHA_SITE_KEY);
     }
 }
 
@@ -535,6 +534,67 @@ const registrationLimiter = rateLimit({
     }
 });
 
+// 2. EMAIL DOMAIN BLACKLIST
+const suspiciousEmailDomains = [
+    'tempmail.org', '10minutemail.com', 'guerrillamail.com', 
+    'mailinator.com', 'yopmail.com', 'temp-mail.org',
+    'throwaway.email', 'getnada.com', 'maildrop.cc'
+];
+
+function isValidEmailDomain(email) {
+    const domain = email.split('@')[1]?.toLowerCase();
+    if (!domain) return false;
+    
+    // Block obvious temp email domains
+    if (suspiciousEmailDomains.includes(domain)) {
+        return false;
+    }
+    
+    // Block domains with suspicious patterns
+    if (domain.includes('temp') || domain.includes('fake') || domain.includes('spam')) {
+        return false;
+    }
+    
+    return true;
+}
+
+// 4. TIMING ANALYSIS (Detect too-fast submissions)
+const registrationStartTimes = new Map();
+
+function trackRegistrationStart(ip) {
+    registrationStartTimes.set(ip, Date.now());
+}
+
+function isSubmissionTooFast(ip, minSeconds = 5) {
+    const startTime = registrationStartTimes.get(ip);
+    if (!startTime) return false;
+    
+    const timeTaken = (Date.now() - startTime) / 1000;
+    registrationStartTimes.delete(ip); // Clean up
+    
+    return timeTaken < minSeconds;
+}
+
+// 5. SIMPLE MATH CHALLENGE (User-friendly alternative to reCAPTCHA)
+function generateMathChallenge() {
+    const a = Math.floor(Math.random() * 10) + 1;
+    const b = Math.floor(Math.random() * 10) + 1;
+    return {
+        question: `What is ${a} + ${b}?`,
+        answer: a + b,
+        token: Buffer.from(`${a}:${b}`).toString('base64')
+    };
+}
+
+function verifyMathChallenge(token, userAnswer) {
+    try {
+        const [a, b] = Buffer.from(token, 'base64').toString().split(':').map(Number);
+        return (a + b) === parseInt(userAnswer);
+    } catch {
+        return false;
+    }
+}
+
 app.use('/api/*/search', searchLimiter);
 
 // Payment rate limiting
@@ -544,6 +604,8 @@ const paymentLimiter = rateLimit({
     message: { error: 'Too many payment attempts, please try again later' },
     trustProxy: true 
 });
+
+app.use('/api/register-free', registrationLimiter);
 
 // Authentication middleware
 function requireAuth(req, res, next) {
@@ -588,19 +650,61 @@ function validateEmail(email) {
     return emailRegex.test(email);
 }
 
-app.post('/api/register-free', checkIPBlacklist, async function(req, res) {
+app.get('/api/math-challenge', (req, res) => {
+    const challenge = generateMathChallenge();
+    res.json({
+        question: challenge.question,
+        token: challenge.token
+    });
+});
+
+app.post('/api/track-form-start', (req, res) => {
+    trackRegistrationStart(req.ip);
+    res.json({ success: true });
+});
+
+app.post('/api/register-free', checkIPBlacklist, registrationLimiter, async function(req, res) {
     try {
         const username = req.body.username;
         const email = req.body.email;
-        const recaptchaToken = req.body.recaptchaToken;
+        const honeypot = req.body.website;
+        const mathAnswer = req.body.mathAnswer;
+        const mathToken = req.body.mathToken;
+        const clientIP = req.ip;
         
-        // Validate inputs
+        console.log('🛡️ Registration attempt:', { 
+            username, email, ip: clientIP,
+            honeypot: !!honeypot, mathProvided: !!mathAnswer
+        });
+        
+        // Bot checks...
+        if (honeypot && honeypot.trim() !== '') {
+            console.log('🤖 Bot detected via honeypot:', clientIP);
+            return res.status(400).json({ error: 'Registration failed. Please try again.' });
+        }
+        
+        if (isSubmissionTooFast(clientIP, 3)) {
+            console.log('🤖 Bot detected via timing:', clientIP);
+            return res.status(400).json({ error: 'Please take a moment to complete the form.' });
+        }
+        
+        if (!mathToken || !mathAnswer || !verifyMathChallenge(mathToken, mathAnswer)) {
+            console.log('🤖 Bot detected via math challenge:', clientIP);
+            return res.status(400).json({ error: 'Please solve the math problem correctly.' });
+        }
+        
+        // Validation...
         if (!username || !email) {
             return res.status(400).json({ error: 'Username and email are required' });
         }
         
         if (!validateEmail(email)) {
             return res.status(400).json({ error: 'Valid email address is required' });
+        }
+        
+        if (!isValidEmailDomain(email)) {
+            console.log('🤖 Suspicious email domain:', email);
+            return res.status(400).json({ error: 'Please use a valid email address.' });
         }
         
         if (username.trim().length < 3 || username.length > 20) {
@@ -611,7 +715,9 @@ app.post('/api/register-free', checkIPBlacklist, async function(req, res) {
             return res.status(400).json({ error: 'Username can only contain letters, numbers, and underscores' });
         }
         
-        // Check if username or email already exists
+        console.log('✅ Registration passed all bot checks:', email);
+        
+        // ADD THE ACTUAL REGISTRATION LOGIC:
         db.query(
             'SELECT id, username, email FROM users WHERE username = ?', 
             [username.trim()], 
@@ -622,16 +728,13 @@ app.post('/api/register-free', checkIPBlacklist, async function(req, res) {
                 }
                 
                 if (results.length > 0) {
-                    const existing = results[0];
-                    if (existing.username == username.trim()) {
-                        return res.status(400).json({ error: 'Username already taken' });
-                    }
+                    return res.status(400).json({ error: 'Username already taken' });
                 }
                 
                 // Generate temporary password
                 const tempPassword = crypto.randomBytes(8).toString('hex');
                 
-                // Create the user account with 'registered' role
+                // Create the user account
                 db.query(
                     'INSERT INTO users (username, user_password, email, role, temp_pass) VALUES (?, ?, ?, ?, ?)',
                     [username.trim(), tempPassword, email.trim(), 'registered', 1],
@@ -641,39 +744,21 @@ app.post('/api/register-free', checkIPBlacklist, async function(req, res) {
                             return res.status(500).json({ error: 'Account creation failed' });
                         }
                         
-                        console.log('✅ Free account created for:', email, '(human verified)');
-                        const userId = result.insertId;
+                        console.log('✅ Free account created for:', email, '(bot protection passed)');
                         
                         // Send welcome email
                         const welcomeEmailHtml = createWelcomeEmailHTML(email, username, tempPassword);
                         
-                        console.log('📧 Sending welcome email to:', email);
                         sendEmail(
                             email,
                             '🎉 Welcome to Kanji Wizard - Your Free Account is Ready!',
                             welcomeEmailHtml,
                             'free_registration'
-                        ).then(function(emailSent) {
-                            if (!emailSent) {
-                                console.error('❌ Failed to send welcome email to:', email);
-                            }
-                            
-                            // Log the registration
-                            db.query(
-                                'INSERT INTO email_logs (email, email_type, status, details) VALUES (?, ?, ?, ?)',
-                                [email, 'free_registration', emailSent ? 'sent' : 'failed', 'Free account created for username: ' + username],
-                                function(err) {
-                                    if (err) console.error('Error logging registration:', err);
-                                }
-                            );
-                        }).catch(function(error) {
-                            console.error('❌ Email sending error:', error);
-                        });
+                        );
                         
                         res.json({ 
                             success: true, 
-                            message: 'Account created successfully! Check your email for login credentials.',
-                            userId: userId
+                            message: 'Account created successfully! Check your email for login credentials.'
                         });
                     }
                 );
@@ -681,7 +766,7 @@ app.post('/api/register-free', checkIPBlacklist, async function(req, res) {
         );
         
     } catch (error) {
-        console.error('❌ Free registration error:', error);
+        console.error('❌ Registration error:', error);
         res.status(500).json({ error: 'Registration failed. Please try again.' });
     }
 });
