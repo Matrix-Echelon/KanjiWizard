@@ -924,16 +924,21 @@ app.post('/api/create-checkout-session', paymentLimiter, async (req, res) => {
             return res.status(400).json({ error: 'Username can only contain letters, numbers, and underscores' });
         }
         
-        // Check username availability one more time
-        const usernameCheck = await new Promise((resolve, reject) => {
-            db.query('SELECT id FROM users WHERE username = ?', [username.trim()], (err, results) => {
+        // Check username availability (but allow existing users with same email to upgrade)
+        const existingUser = await new Promise((resolve, reject) => {
+            db.query('SELECT id, email FROM users WHERE username = ?', [username.trim()], (err, results) => {
                 if (err) reject(err);
-                else resolve(results.length === 0);
+                else resolve(results);
             });
         });
         
-        if (!usernameCheck) {
-            return res.status(400).json({ error: 'Username is already taken' });
+        if (existingUser.length > 0) {
+            // Username exists - check if it's the same user trying to upgrade
+            if (existingUser[0].email !== email.trim()) {
+                return res.status(400).json({ error: 'Username is already taken by another user' });
+            }
+            // Same user upgrading - allow it
+            console.log('🔄 Existing user upgrading:', email);
         }
         
         console.log('💳 Creating checkout session for:', email, 'with username:', username);
@@ -949,7 +954,7 @@ app.post('/api/create-checkout-session', paymentLimiter, async (req, res) => {
                             name: 'Kanji Wizard - Lifetime Access',
                             description: 'Full access to all JLPT levels, unlimited quizzes, and progress tracking',
                         },
-                        unit_amount: 1599, // $15.99 in cents
+                        unit_amount: 999, // $9.99 in cents
                     },
                     quantity: 1,
                 },
