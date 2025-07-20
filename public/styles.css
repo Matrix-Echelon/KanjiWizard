@@ -3256,3 +3256,142 @@ body {
 .focus-btn.in-focus:hover {
     background-color: #ff5252;
 }
+
+.focus-modal-content {
+    max-width: 800px;
+    max-height: 80vh;
+    overflow-y: auto;
+}
+
+.focus-list-stats {
+    display: flex;
+    justify-content: space-around;
+    margin: 20px 0;
+    padding: 20px;
+    background: #f8f9fa;
+    border-radius: 10px;
+}
+
+.focus-stat {
+    text-align: center;
+}
+
+.focus-stat-number {
+    display: block;
+    font-size: 28px;
+    font-weight: bold;
+    color: #4a90e2;
+}
+
+.focus-stat-label {
+    font-size: 14px;
+    color: #666;
+}
+
+.focus-section {
+    margin: 30px 0;
+}
+
+.focus-section h3 {
+    color: #333;
+    margin-bottom: 15px;
+    border-bottom: 2px solid #4a90e2;
+    padding-bottom: 10px;
+}
+
+.focus-items-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 15px;
+    margin: 20px 0;
+}
+
+.focus-item {
+    background: white;
+    border: 2px solid #ff6b6b;
+    border-radius: 10px;
+    padding: 15px;
+    position: relative;
+    transition: all 0.3s ease;
+}
+
+.focus-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(255, 107, 107, 0.2);
+}
+
+.focus-item-char {
+    font-size: 36px;
+    font-weight: bold;
+    text-align: center;
+    color: #333;
+    margin-bottom: 10px;
+}
+
+.focus-item-word {
+    font-size: 24px;
+    font-weight: bold;
+    color: #333;
+    text-align: center;
+    margin-bottom: 5px;
+}
+
+.focus-item-reading {
+    font-size: 14px;
+    color: #666;
+    text-align: center;
+    margin-bottom: 10px;
+}
+
+.focus-item-meaning {
+    font-size: 14px;
+    color: #4a90e2;
+    text-align: center;
+    line-height: 1.4;
+}
+
+.remove-focus-btn {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    background: #ff6b6b;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: bold;
+}
+
+.remove-focus-btn:hover {
+    background: #ff5252;
+}
+
+.no-focus-items {
+    text-align: center;
+    padding: 40px 20px;
+    color: #666;
+}
+
+.no-focus-items h3 {
+    color: #333;
+    margin-bottom: 20px;
+}
+
+.focus-actions {
+    text-align: center;
+    margin-top: 30px;
+    padding-top: 20px;
+    border-top: 1px solid #eee;
+}
+
+.quiz-btn.focus-list-btn {
+    background: linear-gradient(135deg, #ff6b6b, #ff5252);
+    color: white;
+}
+
+.quiz-btn.focus-list-btn:hover {
+    background: linear-gradient(135deg, #ff5252, #f44336);
+}
