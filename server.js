@@ -2279,7 +2279,7 @@ app.post('/api/save-quiz-session', requireAuth, (req, res) => {
                     detail.itemId,
                     detail.wasCorrect,
                     detail.userAnswer || null,
-                    null // time_taken - we can add this later if needed
+                    detail.timeTaken || null
                 ]);
                 
                 const detailsQuery = 'INSERT INTO quiz_session_details (session_id, item_type, item_id, was_correct, user_answer, time_taken) VALUES ?';
