@@ -1691,6 +1691,32 @@ function displayQuestion(questionText, displayItem, answers, correctAnswer, ques
     `;
 }
 
+function addToFocusList(itemType, itemId) {
+    const userId = getCurrentUserId();
+    
+    fetch('/api/focus-list', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            userId: userId,
+            itemType: itemType,
+            itemId: itemId
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            console.log('✅ Added to focus list:', itemType, itemId);
+        } else if (data.error !== 'Item already in focus list') {
+            console.error('❌ Failed to add to focus list:', data.error);
+        }
+        // Silently ignore "already exists" errors
+    })
+    .catch(error => {
+        console.error('❌ Error adding to focus list:', error);
+    });
+}
+
 function selectAnswer(selectedAnswer, correctAnswer, selectedIndex) {
     if (hasAnswered) return;
     
@@ -1708,6 +1734,10 @@ function selectAnswer(selectedAnswer, correctAnswer, selectedIndex) {
     
     // Save to database
     saveQuizResult(currentQuestion, isCorrect, selectedAnswer);
+
+    if (!isCorrect && isAuthenticated) {
+        addToFocusList(currentQuestion.item_type, currentQuestion.id);
+    }
     
     const feedback = document.getElementById('feedback');
     const controls = document.getElementById('controls');
