@@ -581,8 +581,15 @@ app.post('/api/register-free', checkIPBlacklist, async function(req, res) {
         }
         
         // 🛡️ Verify reCAPTCHA first
-        if (!recaptchaToken) {
-            return res.status(400).json({ error: 'Security verification missing. Please try again.' });
+        if (recaptchaToken) {
+            const isHuman = await verifyRecaptcha(recaptchaToken);
+            if (!isHuman) {
+                console.log('🤖 Bot registration attempt blocked:', { username, email, ip: req.ip });
+                return res.status(400).json({ error: 'Security verification failed. Please try again.' });
+            }
+            console.log('✅ reCAPTCHA verification passed');
+        } else {
+            console.log('⚠️ Registration without reCAPTCHA token (fallback mode)');
         }
         
         const isHuman = await verifyRecaptcha(recaptchaToken);
