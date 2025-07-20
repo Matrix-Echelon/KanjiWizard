@@ -933,14 +933,19 @@ app.post('/api/create-checkout-session', paymentLimiter, async (req, res) => {
             });
         });
         
+        // Check if this specific user (email + username combo) exists
+        const existingUser = await new Promise((resolve, reject) => {
+            db.query('SELECT id, username, email FROM users WHERE email = ? AND username = ?', [email.trim(), username.trim()], (err, results) => {
+                if (err) reject(err);
+                else resolve(results);
+            });
+        });
+        
         if (existingUser.length > 0) {
-            // This is an upgrade - make sure they're using their existing username
-            if (existingUser[0].username !== username.trim()) {
-                return res.status(400).json({ error: 'Please use your existing username: ' + existingUser[0].username });
-            }
-            console.log('🔄 Existing user upgrading:', email);
+            // This is an upgrade - user exists with this email+username combo
+            console.log('🔄 Existing user upgrading:', email, 'username:', username);
         } else {
-            // This is a new user - check username availability
+            // This could be a new user - check username availability
             const usernameCheck = await new Promise((resolve, reject) => {
                 db.query('SELECT id FROM users WHERE username = ?', [username.trim()], (err, results) => {
                     if (err) reject(err);
@@ -951,6 +956,7 @@ app.post('/api/create-checkout-session', paymentLimiter, async (req, res) => {
             if (!usernameCheck) {
                 return res.status(400).json({ error: 'Username is already taken' });
             }
+            console.log('👤 New user registration for:', email, 'username:', username);
         }
         
         console.log('💳 Creating checkout session for:', email, 'with username:', username);
