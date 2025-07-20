@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Japanese Learning App</title>
-    <link rel="stylesheet" href="styles.css?v=12">
+    <link rel="stylesheet" href="styles.css?v=13">
 </head>
 <body>
     <div class="header">
@@ -1156,7 +1156,7 @@ function displayPaginatedItems() {
     const pageItems = filteredItems.slice(startIndex, endIndex);
     
     if (currentView === 'kanji') {
-        displayKanji(pageItems);
+        (pageItems);
     } else {
         displayWords(pageItems);
     }
@@ -1900,6 +1900,11 @@ function displayKanji(kanjiList) {
                     onclick="toggleSelection(${kanji.id})">
                 ${isSelected ? '✓ Selected' : '+ Add to Quiz'}
             </button>
+            <button class="focus-btn" 
+                    id="focus-kanji-${kanji.id}"
+                    onclick="toggleFocusList('kanji', ${kanji.id})">
+                🎯 Focus
+            </button>
             ` : '<div class="guest-notice">Login to add to quiz</div>'}
         </div>
         `;
@@ -1948,6 +1953,11 @@ function displayWords(wordList) {
                     data-item-id="${word.id}" 
                     onclick="toggleSelection(${word.id})">
                 ${isSelected ? '✓ Selected' : '+ Add to Quiz'}
+            </button>
+            <button class="focus-btn" 
+                    id="focus-kanji-${kanji.id}"
+                    onclick="toggleFocusList('kanji', ${kanji.id})">
+                🎯 Focus
             </button>
             ` : '<div class="guest-notice">Login to add to quiz</div>'}
         </div>
