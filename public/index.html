@@ -281,33 +281,57 @@ function handleFreeRegistration(event) {
     registerButton.disabled = true;
     registerButton.textContent = 'Verifying you\'re human...';
     
-    // 🛡️ reCAPTCHA verification
-    grecaptcha.ready(function() {
-        grecaptcha.execute('6LdnA4krAAAAACqy1umabGKSSfkT2Bt35LLRSvPA', {action: 'register'}).then(function(token) {
-            // Now submit with reCAPTCHA token
-            submitRegistration(username, email, token, registerButton, errorDiv, successDiv);
-        }).catch(function(error) {
-            console.error('reCAPTCHA error:', error);
-            showRegisterError('Security verification failed. Please try again.');
-            registerButton.disabled = false;
-            registerButton.textContent = 'Create Free Account';
+    // 🛡️ Safe reCAPTCHA verification with error handling
+    try {
+        if (typeof grecaptcha === 'undefined') {
+            console.warn('reCAPTCHA not loaded, proceeding without verification');
+            submitRegistration(username, email, null, registerButton, errorDiv, successDiv);
+            return;
+        }
+        
+        grecaptcha.ready(function() {
+            console.log('reCAPTCHA ready, executing...');
+            
+            grecaptcha.execute('6LdnA4krAAAAACqy1umabGKSSfkT2Bt35LLRSvPA', {
+                action: 'register'
+            }).then(function(token) {
+                console.log('reCAPTCHA token received:', token ? 'Yes' : 'No');
+                submitRegistration(username, email, token, registerButton, errorDiv, successDiv);
+            }).catch(function(error) {
+                console.error('reCAPTCHA execution error:', error);
+                showRegisterError('Security verification failed. Please try again.');
+                registerButton.disabled = false;
+                registerButton.textContent = 'Create Free Account';
+            });
         });
-    });
+        
+    } catch (error) {
+        console.error('reCAPTCHA integration error:', error);
+        console.log('Proceeding without reCAPTCHA verification');
+        submitRegistration(username, email, null, registerButton, errorDiv, successDiv);
+    }
 }
 
+// 🔧 UPDATED: Make submitRegistration handle null tokens gracefully
 function submitRegistration(username, email, recaptchaToken, registerButton, errorDiv, successDiv) {
     registerButton.textContent = 'Creating Account...';
+    
+    const requestBody = { 
+        username: username, 
+        email: email
+    };
+    
+    // Only add reCAPTCHA token if we have one
+    if (recaptchaToken) {
+        requestBody.recaptchaToken = recaptchaToken;
+    }
     
     fetch('/api/register-free', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ 
-            username: username, 
-            email: email,
-            recaptchaToken: recaptchaToken
-        })
+        body: JSON.stringify(requestBody)
     })
     .then(function(response) {
         return response.json();
@@ -336,7 +360,7 @@ function submitRegistration(username, email, recaptchaToken, registerButton, err
         registerButton.textContent = 'Create Free Account';
     });
 }
-
+    
 function showRegisterError(message) {
     const errorDiv = document.getElementById('registerError');
     errorDiv.textContent = message;
