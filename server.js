@@ -924,15 +924,6 @@ app.post('/api/create-checkout-session', paymentLimiter, async (req, res) => {
             return res.status(400).json({ error: 'Username can only contain letters, numbers, and underscores' });
         }
         
-        // Check username availability (but allow existing users with same email to upgrade)
-        // Check if this is an upgrade (user already exists with this email)
-        const existingUser = await new Promise((resolve, reject) => {
-            db.query('SELECT id, username, email FROM users WHERE email = ?', [email.trim()], (err, results) => {
-                if (err) reject(err);
-                else resolve(results);
-            });
-        });
-        
         // Check if this specific user (email + username combo) exists
         const existingUser = await new Promise((resolve, reject) => {
             db.query('SELECT id, username, email FROM users WHERE email = ? AND username = ?', [email.trim(), username.trim()], (err, results) => {
