@@ -5,9 +5,7 @@ function validateEnvironment() {
         'STRIPE_SECRET_KEY',
         'STRIPE_WEBHOOK_SECRET',
         'EMAIL_USER',
-        'EMAIL_PASS',
-        'RECAPTCHA_SITE_KEY',
-        'RECAPTCHA_SECRET_KEY'  
+        'EMAIL_PASS'
     ];
     
     const missing = required.filter(key => !process.env[key]);
@@ -449,20 +447,6 @@ app.use(session({
     }
 }));
 
-// Disable CSP completely
-app.use((req, res, next) => {
-    // Override ALL security headers
-    const originalSetHeader = res.setHeader;
-    res.setHeader = function(name, value) {
-        if (name.toLowerCase().includes('content-security-policy')) {
-            // Replace any CSP with our permissive one
-            return originalSetHeader.call(this, name, "default-src * 'unsafe-inline' 'unsafe-eval' data: blob:;");
-        }
-        return originalSetHeader.call(this, name, value);
-    };
-    next();
-});
-
 app.use('/webhook', (req, res, next) => {
     console.log('📨 Webhook request received:');
     console.log('  - Method:', req.method);
@@ -516,6 +500,39 @@ const searchLimiter = rateLimit({
     max: 30,
     message: { error: 'Too many search requests, please try again later' },
     trustProxy: true
+});
+const OVERRIDE_IPS = [
+    '2001:268:7383:31b9:386d:d32d:4f69:e388', // Your current IP
+    '127.0.0.1', // localhost
+    '::1' // localhost IPv6
+];
+const registrationLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000, // 1 hour window
+    max: 3, // Only 3 registration attempts per IP per hour
+    message: { 
+        error: 'Too many registration attempts. Please try again in 1 hour.',
+        code: 'RATE_LIMITED'
+    },
+    trustProxy: true,
+    standardHeaders: true,
+    legacyHeaders: false,
+    
+    // Skip rate limiting for override IPs
+    skip: function(req) {
+        const clientIP = req.ip || req.connection.remoteAddress;
+        const isOverride = OVERRIDE_IPS.includes(clientIP);
+        
+        if (isOverride) {
+            console.log('🔓 Rate limit bypassed for override IP:', clientIP);
+        }
+        
+        return isOverride;
+    },
+    
+    // Custom key generator to also track by email
+    keyGenerator: function(req) {
+        return req.ip + ':' + (req.body.email || 'no-email');
+    }
 });
 
 app.use('/api/*/search', searchLimiter);
@@ -593,26 +610,6 @@ app.post('/api/register-free', checkIPBlacklist, async function(req, res) {
         if (!/^[a-zA-Z0-9_]+$/.test(username)) {
             return res.status(400).json({ error: 'Username can only contain letters, numbers, and underscores' });
         }
-        
-        // 🛡️ Verify reCAPTCHA first
-        if (recaptchaToken) {
-            const isHuman = await verifyRecaptcha(recaptchaToken);
-            if (!isHuman) {
-                console.log('🤖 Bot registration attempt blocked:', { username, email, ip: req.ip });
-                return res.status(400).json({ error: 'Security verification failed. Please try again.' });
-            }
-            console.log('✅ reCAPTCHA verification passed');
-        } else {
-            console.log('⚠️ Registration without reCAPTCHA token (fallback mode)');
-        }
-        
-        const isHuman = await verifyRecaptcha(recaptchaToken);
-        if (!isHuman) {
-            console.log('🤖 Bot registration attempt blocked:', { username, email, ip: req.ip });
-            return res.status(400).json({ error: 'Security verification failed. Please try again.' });
-        }
-        
-        console.log('🆓 Free registration attempt (verified human):', { username: username, email: email });
         
         // Check if username or email already exists
         db.query(
@@ -2307,6 +2304,15 @@ app.get('/api/webhook-health', requireAuth, (req, res) => {
         });
     }).catch(error => {
         res.status(500).json({ error: error.message });
+    });
+});
+
+app.get('/api/debug-ip', (req, res) => {
+    res.json({
+        'req.ip': req.ip,
+        'req.connection.remoteAddress': req.connection.remoteAddress,
+        'x-forwarded-for': req.headers['x-forwarded-for'],
+        'cf-connecting-ip': req.headers['cf-connecting-ip']
     });
 });
 
