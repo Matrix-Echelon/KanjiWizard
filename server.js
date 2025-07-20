@@ -449,13 +449,10 @@ app.use(session({
     }
 }));
 
+// Disable CSP completely
 app.use((req, res, next) => {
-    res.setHeader('Content-Security-Policy', 
-        "default-src 'self'; " +
-        "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.google.com https://www.gstatic.com; " +
-        "frame-src https://www.google.com; " +
-        "connect-src 'self' https://www.google.com;"
-    );
+    res.removeHeader('Content-Security-Policy');
+    res.removeHeader('Content-Security-Policy-Report-Only');
     next();
 });
 
