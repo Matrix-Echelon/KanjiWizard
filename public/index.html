@@ -83,6 +83,11 @@ let quizResults = [];
 let currentQuestion = null;
 let hasAnswered = false;
 
+// Quiz Timing Variables
+let quizStartTime = null;
+let quizEndTime = null;
+let currentQuizType = null; // 'kanji', 'word', or 'mixed'
+
 // Authentication state
 let isAuthenticated = false;
 let currentUser = null;
@@ -1415,6 +1420,8 @@ function startGuestQuiz(quizType) {
 }
 
 function startGuestQuizWithType(quizType) {
+
+    currentQuizType = quizType;
     currentQuestionIndex = 0;
     quizResults = [];
     hasAnswered = false;
@@ -1478,6 +1485,9 @@ function setupQuizType(quizType, maxItems) {
 }
 
 function startQuizWithType(quizType, maxQuestions) {
+
+    currentQuizType = quizType;
+    
     const quizCount = parseInt(document.getElementById('quizCount').value);
     
     if (quizCount < 1 || quizCount > maxQuestions) {
@@ -1520,7 +1530,48 @@ function startQuizWithType(quizType, maxQuestions) {
     });
 }
 
+
+function saveQuizSession() {
+    if (!isAuthenticated) return; // Skip for guests
+    
+    const sessionData = {
+        userId: getCurrentUserId(),
+        sessionType: currentQuizType,
+        totalQuestions: quizData.length,
+        correctAnswers: quizResults.filter(r => r.isCorrect).length,
+        sessionDuration: Math.round((quizEndTime - quizStartTime) / 1000), // Convert to seconds
+        questionDetails: quizResults.map(result => ({
+            itemType: result.itemType,
+            itemId: result.itemId,
+            wasCorrect: result.isCorrect,
+            userAnswer: result.userAnswer
+        }))
+    };
+    
+    fetch('/api/save-quiz-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(sessionData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            console.log('✅ Quiz session saved successfully');
+        } else {
+            console.error('❌ Failed to save quiz session:', data.error);
+        }
+    })
+    .catch(error => {
+        console.error('❌ Error saving quiz session:', error);
+    });
+}
+
 function showQuestion() {
+
+    if (currentQuestionIndex === 0) {
+    quizStartTime = Date.now();
+    }
+    
     if (currentQuestionIndex >= quizData.length) {
         showQuizComplete();
         return;
@@ -1644,7 +1695,13 @@ function selectAnswer(selectedAnswer, correctAnswer, selectedIndex) {
     const isCorrect = selectedAnswer === correctAnswer;
     
     // Store result locally for scoring
-    quizResults.push({ isCorrect: isCorrect });
+    quizResults.push({ 
+        isCorrect: isCorrect,
+        itemType: currentQuestion.item_type,
+        itemId: currentQuestion.id,
+        userAnswer: selectedAnswer,
+        correctAnswer: correctAnswer
+    });
     
     // Save to database
     saveQuizResult(currentQuestion, isCorrect, selectedAnswer);
@@ -1712,6 +1769,10 @@ function quitQuiz() {
 }
 
 function showQuizComplete() {
+
+    quizEndTime = Date.now();
+    saveQuizSession();   
+    
     const correctCount = quizResults.filter(result => result.isCorrect).length;
     const totalQuestions = quizResults.length;
     const percentage = totalQuestions > 0 ? Math.round((correctCount / totalQuestions) * 100) : 0;
