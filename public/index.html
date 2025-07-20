@@ -2456,6 +2456,65 @@ function removeFocusItem(itemType, itemId) {
     });
 }
 
+function showFocusListModal() {
+    const userId = getCurrentUserId();
+    
+    // Create modal if it doesn't exist
+    let modal = document.getElementById('focusListModal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'focusListModal';
+        modal.className = 'modal';
+        modal.innerHTML = `
+            <div class="modal-content focus-modal-content">
+                <span class="close" onclick="closeFocusListModal()">&times;</span>
+                <div class="modal-header">
+                    <h2>🎯 Your Focus List</h2>
+                    <p>Items you need to review</p>
+                </div>
+                <div id="focusListContent">
+                    <div class="loading">Loading focus list...</div>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+    }
+    
+    modal.style.display = 'block';
+    loadFocusListItems();
+    
+    // Close modal when clicking outside
+    modal.onclick = function(event) {
+        if (event.target === modal) {
+            closeFocusListModal();
+        }
+    };
+}
+
+// Close focus list modal
+function closeFocusListModal() {
+    const modal = document.getElementById('focusListModal');
+    if (modal) {
+        modal.style.display = 'none';
+    }
+}
+
+// Load and display focus list items
+function loadFocusListItems() {
+    const userId = getCurrentUserId();
+    const contentDiv = document.getElementById('focusListContent');
+    
+    fetch(`/api/focus-list/${userId}`)
+        .then(response => response.json())
+        .then(data => {
+            displayFocusListItems(data);
+        })
+        .catch(error => {
+            console.error('Error loading focus list:', error);
+            contentDiv.innerHTML = '<div class="error">Failed to load focus list</div>';
+        });
+}
+
 // Start a quiz with only focus items
 function startFocusQuiz() {
     // This will be implemented in the next step
