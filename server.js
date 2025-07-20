@@ -1318,8 +1318,8 @@ app.post('/api/login', async (req, res) => {
             });
         }
         
-        // Proceed with normal login
-        const query = 'SELECT id, username, email, temp_pass FROM users WHERE username = ? AND user_password = ?';
+        // Proceed with normal login - UPDATED to include role
+        const query = 'SELECT id, username, email, temp_pass, role FROM users WHERE username = ? AND user_password = ?';
         
         db.query(query, [username, password], async (err, results) => {
             if (err) {
@@ -1328,39 +1328,40 @@ app.post('/api/login', async (req, res) => {
                 return res.status(500).json({ error: 'Server error' });
             }
             
-if (results.length > 0) {
-    // Successful login
-    await recordLoginAttempt(username, clientIP, true);
-    
-    req.session.userId = results[0].id;
-    req.session.username = results[0].username;
-    
-    // UPDATE: Set last_login timestamp
-    db.query(
-        'UPDATE users SET last_login = NOW() WHERE id = ?',
-        [results[0].id],
-        function(err, updateResult) {
-            if (err) {
-                console.error('Error updating last_login:', err);
+            if (results.length > 0) {
+                // Successful login
+                await recordLoginAttempt(username, clientIP, true);
+                
+                req.session.userId = results[0].id;
+                req.session.username = results[0].username;
+                
+                // UPDATE: Set last_login timestamp
+                db.query(
+                    'UPDATE users SET last_login = NOW() WHERE id = ?',
+                    [results[0].id],
+                    function(err, updateResult) {
+                        if (err) {
+                            console.error('Error updating last_login:', err);
+                        } else {
+                            console.log('✅ Updated last_login for user:', results[0].username);
+                        }
+                    }
+                );
+                
+                console.log('Login successful for user:', results[0].username);
+                
+                // UPDATED response to include role
+                res.json({
+                    success: true,
+                    user: {
+                        id: results[0].id,
+                        username: results[0].username,
+                        email: results[0].email,
+                        temp_pass: results[0].temp_pass,
+                        role: results[0].role
+                    }
+                });
             } else {
-                console.log('✅ Updated last_login for user:', results[0].username);
-            }
-        }
-    );
-    
-    console.log('Login successful for user:', results[0].username);
-    
-    res.json({
-        success: true,
-        user: {
-            id: results[0].id,
-            username: results[0].username,
-            email: results[0].email,
-            temp_pass: results[0].temp_pass
-        }
-    });
-}              
-else {
                 // Failed login
                 const result = await recordLoginAttempt(username, clientIP, false);
                 
