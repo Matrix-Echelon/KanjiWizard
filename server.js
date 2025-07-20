@@ -1289,8 +1289,8 @@ async function handleSuccessfulPayment(session) {
         const tempPassword = crypto.randomBytes(8).toString('hex');
         console.log('🔐 Generated temp password for:', email);
         
-        // Store pending registration
-        await new Promise((resolve, reject) => {
+        // Store pending registration - LEGACY CODE
+        /*  await new Promise((resolve, reject) => {
             db.query(
                 'INSERT INTO pending_registrations (email, payment_intent_id, temp_username, temp_password) VALUES (?, ?, ?, ?)',
                 [email, paymentIntentId, chosenUsername, tempPassword],
@@ -1305,6 +1305,7 @@ async function handleSuccessfulPayment(session) {
                 }
             );
         });
+        */
         
         // Check if user already exists
         const existingUser = await new Promise((resolve, reject) => {
@@ -1410,7 +1411,8 @@ async function handleSuccessfulPayment(session) {
             });
         }
         
-        // Update pending registration status
+        // Update pending registration status - Legacy Code
+        /*
         await new Promise((resolve, reject) => {
             db.query(
                 'UPDATE pending_registrations SET status = ? WHERE payment_intent_id = ?',
@@ -1426,6 +1428,7 @@ async function handleSuccessfulPayment(session) {
                 }
             );
         });
+        */
         
         console.log('🎉 Payment processing completed successfully for:', email);
         
