@@ -2112,6 +2112,153 @@ app.post('/api/quiz-result', requireAuth, (req, res) => {
     });
 });
 
+// Save quiz session with details
+app.post('/api/save-quiz-session', requireAuth, (req, res) => {
+    const { userId, sessionType, totalQuestions, correctAnswers, sessionDuration, questionDetails } = req.body;
+    
+    // Verify user owns this session
+    if (parseInt(userId) !== req.session.userId) {
+        return res.status(403).json({ error: 'Access denied' });
+    }
+    
+    console.log('💾 Saving quiz session for user:', userId, 'Type:', sessionType);
+    
+    // Insert quiz session
+    db.query(
+        'INSERT INTO quiz_sessions (user_id, session_type, total_questions, correct_answers, session_duration, started_at, completed_at) VALUES (?, ?, ?, ?, ?, NOW() - INTERVAL ? SECOND, NOW())',
+        [userId, sessionType, totalQuestions, correctAnswers, sessionDuration, sessionDuration],
+        (err, sessionResult) => {
+            if (err) {
+                console.error('❌ Error saving quiz session:', err);
+                return res.status(500).json({ error: 'Failed to save quiz session' });
+            }
+            
+            const sessionId = sessionResult.insertId;
+            console.log('✅ Quiz session saved with ID:', sessionId);
+            
+            // Insert question details if provided
+            if (questionDetails && questionDetails.length > 0) {
+                const detailsValues = questionDetails.map(detail => [
+                    sessionId,
+                    detail.itemType,
+                    detail.itemId,
+                    detail.wasCorrect,
+                    detail.userAnswer || null,
+                    null // time_taken - we can add this later if needed
+                ]);
+                
+                const detailsQuery = 'INSERT INTO quiz_session_details (session_id, item_type, item_id, was_correct, user_answer, time_taken) VALUES ?';
+                
+                db.query(detailsQuery, [detailsValues], (detailsErr, detailsResult) => {
+                    if (detailsErr) {
+                        console.error('❌ Error saving quiz details:', detailsErr);
+                        // Don't fail the whole request - session is still saved
+                        return res.json({ 
+                            success: true, 
+                            sessionId: sessionId,
+                            warning: 'Session saved but details failed'
+                        });
+                    }
+                    
+                    console.log('✅ Quiz details saved:', detailsResult.affectedRows, 'questions');
+                    res.json({ 
+                        success: true, 
+                        sessionId: sessionId,
+                        detailsCount: detailsResult.affectedRows
+                    });
+                });
+            } else {
+                // No details to save
+                res.json({ 
+                    success: true, 
+                    sessionId: sessionId 
+                });
+            }
+        }
+    );
+});
+
+// Get user's quiz session history (for enhanced stats)
+app.get('/api/user-quiz-sessions/:userId', requireAuth, (req, res) => {
+    const { userId } = req.params;
+    const limit = req.query.limit || 10; // Default to last 10 sessions
+    
+    if (parseInt(userId) !== req.session.userId) {
+        return res.status(403).json({ error: 'Access denied' });
+    }
+    
+    const query = `
+        SELECT 
+            qs.*,
+            ROUND((qs.correct_answers * 100.0 / qs.total_questions), 1) as success_rate
+        FROM quiz_sessions qs
+        WHERE qs.user_id = ?
+        ORDER BY qs.completed_at DESC
+        LIMIT ?
+    `;
+    
+    db.query(query, [userId, parseInt(limit)], (err, results) => {
+        if (err) {
+            console.error('❌ Error fetching quiz sessions:', err);
+            return res.status(500).json({ error: 'Failed to fetch quiz sessions' });
+        }
+        
+        res.json(results);
+    });
+});
+
+// Get detailed results for a specific quiz session
+app.get('/api/quiz-session-details/:sessionId', requireAuth, (req, res) => {
+    const { sessionId } = req.params;
+    
+    // First verify the user owns this session
+    db.query(
+        'SELECT user_id FROM quiz_sessions WHERE id = ?',
+        [sessionId],
+        (err, sessionResults) => {
+            if (err) {
+                return res.status(500).json({ error: 'Database error' });
+            }
+            
+            if (sessionResults.length === 0) {
+                return res.status(404).json({ error: 'Quiz session not found' });
+            }
+            
+            if (sessionResults[0].user_id !== req.session.userId) {
+                return res.status(403).json({ error: 'Access denied' });
+            }
+            
+            // Get the detailed question results
+            const query = `
+                SELECT 
+                    qsd.*,
+                    CASE 
+                        WHEN qsd.item_type = 'kanji' THEN k.kanji_char
+                        WHEN qsd.item_type = 'word' THEN w.word
+                    END as item_display,
+                    CASE 
+                        WHEN qsd.item_type = 'kanji' THEN k.meaning
+                        WHEN qsd.item_type = 'word' THEN w.meaning
+                    END as item_meaning
+                FROM quiz_session_details qsd
+                LEFT JOIN kanji k ON qsd.item_type = 'kanji' AND qsd.item_id = k.id
+                LEFT JOIN words w ON qsd.item_type = 'word' AND qsd.item_id = w.id
+                WHERE qsd.session_id = ?
+                ORDER BY qsd.id
+            `;
+            
+            db.query(query, [sessionId], (detailsErr, detailsResults) => {
+                if (detailsErr) {
+                    console.error('❌ Error fetching session details:', detailsErr);
+                    return res.status(500).json({ error: 'Failed to fetch session details' });
+                }
+                
+                res.json(detailsResults);
+            });
+        }
+    );
+});
+
 // Get overall user statistics
 app.get('/api/user-stats/:userId', requireAuth, (req, res) => {
     const { userId } = req.params;
