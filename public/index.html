@@ -1523,7 +1523,6 @@ function setupQuizType(quizType, maxItems) {
 }
 
 function startQuizWithType(quizType, maxQuestions) {
-
     currentQuizType = quizType === 'words' ? 'word' : quizType;
     
     const quizCount = parseInt(document.getElementById('quizCount').value);
@@ -1540,13 +1539,14 @@ function startQuizWithType(quizType, maxQuestions) {
     const content = document.getElementById('content');
     content.innerHTML = '<div class="loading">Preparing quiz...</div>';
     
-    // Load ALL items (not just selected) for wrong answers
+    // Load items with focus priority
     Promise.all([
         loadUserQuizItems('kanji'),
         loadUserQuizItems('word'),
-        fetch('/api/kanji').then(response => response.json()), // All kanji for wrong answers
-        fetch('/api/words').then(response => response.json())  // All words for wrong answers
-    ]).then(([selectedKanji, selectedWords, allKanji, allWords]) => {
+        loadUserFocusItems(),
+        fetch('/api/kanji').then(response => response.json()),
+        fetch('/api/words').then(response => response.json())
+    ]).then(([selectedKanji, selectedWords, focusItems, allKanji, allWords]) => {
         
         let selectedItems = [];
         if (quizType === 'kanji') {
@@ -1557,8 +1557,9 @@ function startQuizWithType(quizType, maxQuestions) {
             selectedItems = [...selectedKanji, ...selectedWords];
         }
         
-        const shuffledItems = shuffleArray(selectedItems);
-        quizData = shuffledItems.slice(0, quizCount);
+        // 🆕 Apply focus weighting and select items
+        const weightedItems = applyFocusWeighting(selectedItems, focusItems);
+        quizData = selectWeightedQuizItems(weightedItems, quizCount);
         
         // Store all items for generating wrong answers
         window.allKanjiForAnswers = allKanji;
@@ -1568,6 +1569,71 @@ function startQuizWithType(quizType, maxQuestions) {
     });
 }
 
+// Load user's focus items
+function loadUserFocusItems() {
+    const userId = getCurrentUserId();
+    
+    return fetch(`/api/focus-list/${userId}`)
+        .then(response => response.json())
+        .then(focusItems => {
+            // Create a Set of focus item keys for quick lookup
+            const focusSet = new Set();
+            focusItems.forEach(item => {
+                focusSet.add(`${item.item_type}-${item.item_id}`);
+            });
+            return focusSet;
+        })
+        .catch(error => {
+            console.error('Error loading focus items:', error);
+            return new Set(); // Return empty set on error
+        });
+}
+
+// Apply focus weighting to quiz items
+function applyFocusWeighting(selectedItems, focusItems) {
+    const weightedItems = [];
+    
+    selectedItems.forEach(item => {
+        const itemKey = `${item.item_type}-${item.id}`;
+        const isFocusItem = focusItems.has(itemKey);
+        
+        if (isFocusItem) {
+            // Add focus items multiple times for higher probability
+            // 90% chance instead of normal probability
+            for (let i = 0; i < 18; i++) {
+                weightedItems.push(item);
+            }
+        } else {
+            // Add regular items twice for baseline probability
+            weightedItems.push(item);
+            weightedItems.push(item);
+        }
+    });
+    
+    return weightedItems;
+}
+
+// Select quiz items from weighted array
+function selectWeightedQuizItems(weightedItems, quizCount) {
+    const shuffledWeighted = shuffleArray(weightedItems);
+    const selectedItems = [];
+    const usedItems = new Set();
+    
+    // Select unique items from the weighted array
+    for (let item of shuffledWeighted) {
+        const itemKey = `${item.item_type}-${item.id}`;
+        if (!usedItems.has(itemKey)) {
+            selectedItems.push(item);
+            usedItems.add(itemKey);
+            
+            if (selectedItems.length >= quizCount) {
+                break;
+            }
+        }
+    }
+    
+    return selectedItems;
+}
 
 function saveQuizSession() {
     if (!isAuthenticated) return; // Skip for guests
@@ -2526,9 +2592,55 @@ function loadFocusListItems() {
 
 // Start a quiz with only focus items
 function startFocusQuiz() {
-    // This will be implemented in the next step
-    alert('Focus quiz coming soon!');
-    closeFocusListModal();
+    const userId = getCurrentUserId();
+    
+    // Load focus items and start quiz
+    fetch(`/api/focus-list/${userId}`)
+        .then(response => response.json())
+        .then(focusItems => {
+            if (focusItems.length === 0) {
+                alert('No focus items to quiz! Add some items to your focus list first.');
+                return;
+            }
+            
+            // Close the modal
+            closeFocusListModal();
+            
+            // Set up quiz with focus items only
+            currentQuizType = 'mixed'; // Focus quiz is always mixed
+            currentQuestionIndex = 0;
+            quizResults = [];
+            hasAnswered = false;
+            
+            // Convert focus items to quiz format
+            quizData = focusItems.map(item => ({
+                id: item.item_id,
+                item_type: item.item_type,
+                kanji_char: item.kanji_char,
+                word: item.word,
+                reading: item.reading,
+                meaning: item.meaning
+            }));
+            
+            // Shuffle and limit to reasonable size
+            quizData = shuffleArray(quizData).slice(0, Math.min(20, quizData.length));
+            
+            // Load all items for wrong answers
+            Promise.all([
+                fetch('/api/kanji').then(response => response.json()),
+                fetch('/api/words').then(response => response.json())
+            ]).then(([allKanji, allWords]) => {
+                window.allKanjiForAnswers = allKanji;
+                window.allWordsForAnswers = allWords;
+                
+                // Start the focus quiz
+                showQuestion();
+            });
+        })
+        .catch(error => {
+            console.error('Error starting focus quiz:', error);
+            alert('Error starting focus quiz');
+        });
 }
 
 function showAll() {
