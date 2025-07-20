@@ -583,7 +583,7 @@ app.post('/api/register-free', checkIPBlacklist, function(req, res) {
                         const userId = result.insertId;
                         
                         // Send welcome email
-                        const welcomeEmailHtml = createWelcomeEmailHTML(username, tempPassword, null);
+                        const welcomeEmailHtml = createWelcomeEmailHTML(email, username, tempPassword);
                         
                         console.log('📧 Sending welcome email to:', email);
                         sendEmail(
@@ -625,7 +625,9 @@ app.post('/api/register-free', checkIPBlacklist, function(req, res) {
 });
 
 // Email template for NEW users (with credentials)
-function createWelcomeEmailHTML(username, tempPassword, amount) {
+function createWelcomeEmailHTML(email, username, tempPassword, amount = null) {
+    const isPaid = amount && amount > 0;
+    
     return `
         <!DOCTYPE html>
         <html>
@@ -645,21 +647,29 @@ function createWelcomeEmailHTML(username, tempPassword, amount) {
                 
                 <!-- Content -->
                 <div style="padding: 40px 30px;">
-                    <h2 style="color: #4a90e2; margin-bottom: 20px;">🎉 Payment Successful!</h2>
+                    <h2 style="color: #4a90e2; margin-bottom: 20px;">
+                        🎉 ${isPaid ? 'Payment Successful!' : 'Account Created!'}
+                    </h2>
                     <p style="font-size: 16px; line-height: 1.6; color: #333;">
-                        Thank you for purchasing Kanji Wizard! Your payment has been successfully processed and your account is ready.
+                        ${isPaid 
+                            ? 'Thank you for purchasing Kanji Wizard! Your payment has been successfully processed and your account is ready.'
+                            : 'Welcome to Kanji Wizard! Your free account has been created and you\'re ready to start learning Japanese.'
+                        }
                     </p>
                     
-                    <!-- Payment Details -->
+                    ${isPaid ? `
+                    <!-- Payment Details (ONLY for paid accounts) -->
                     <div style="background: #f8f9fa; padding: 25px; border-radius: 10px; margin: 25px 0; border-left: 4px solid #4a90e2;">
                         <h3 style="color: #333; margin-top: 0;">💳 Payment Details</h3>
                         <p style="margin: 8px 0; color: #666;"><strong>Amount:</strong> $${amount}</p>
-                        <p style="margin: 8px 0; color: #666;"><strong>Email:</strong> ${email}</p>
+                        <p style="margin: 8px 0; color: #666;"><strong>Account Type:</strong> Full Access</p>
                     </div>
+                    ` : ''}
                     
                     <!-- Login Credentials -->
                     <div style="background: #d4edda; padding: 25px; border-radius: 10px; margin: 25px 0; border: 2px solid #28a745;">
                         <h3 style="color: #155724; margin-top: 0;">🔐 Your Account Credentials</h3>
+                        <p style="margin: 12px 0; color: #155724; font-size: 16px;"><strong>Email:</strong> <code style="background: rgba(255,255,255,0.8); padding: 4px 8px; border-radius: 4px; font-size: 14px;">${email}</code></p>
                         <p style="margin: 12px 0; color: #155724; font-size: 16px;"><strong>Username:</strong> <code style="background: rgba(255,255,255,0.8); padding: 4px 8px; border-radius: 4px; font-size: 14px;">${username}</code></p>
                         <p style="margin: 12px 0; color: #155724; font-size: 16px;"><strong>Temporary Password:</strong> <code style="background: rgba(255,255,255,0.8); padding: 4px 8px; border-radius: 4px; font-size: 14px;">${tempPassword}</code></p>
                         <div style="background: #fff3cd; padding: 15px; border-radius: 8px; margin-top: 15px; border: 1px solid #ffc107;">
@@ -673,11 +683,18 @@ function createWelcomeEmailHTML(username, tempPassword, amount) {
                     <div style="margin: 30px 0;">
                         <h3 style="color: #333; margin-bottom: 15px;">✨ What You Can Do Now</h3>
                         <ul style="list-style: none; padding: 0;">
-                            <li style="padding: 8px 0; color: #666; border-bottom: 1px solid #eee;">📚 Access all JLPT levels (N5-N1)</li>
-                            <li style="padding: 8px 0; color: #666; border-bottom: 1px solid #eee;">🎯 Create custom quizzes with your selected items</li>
-                            <li style="padding: 8px 0; color: #666; border-bottom: 1px solid #eee;">📊 Track your progress with detailed statistics</li>
-                            <li style="padding: 8px 0; color: #666; border-bottom: 1px solid #eee;">⚡ Take unlimited quizzes</li>
-                            <li style="padding: 8px 0; color: #666;">🎨 Sort by frequency to study most common words first</li>
+                            ${isPaid 
+                                ? `<li style="padding: 8px 0; color: #666; border-bottom: 1px solid #eee;">📚 Access all JLPT levels (N5-N1)</li>
+                                   <li style="padding: 8px 0; color: #666; border-bottom: 1px solid #eee;">🎯 Create custom quizzes with unlimited items</li>
+                                   <li style="padding: 8px 0; color: #666; border-bottom: 1px solid #eee;">📊 Track progress with detailed statistics</li>
+                                   <li style="padding: 8px 0; color: #666; border-bottom: 1px solid #eee;">🎨 Sort by frequency to study efficiently</li>
+                                   <li style="padding: 8px 0; color: #666;">⚡ All future features included</li>`
+                                : `<li style="padding: 8px 0; color: #666; border-bottom: 1px solid #eee;">📚 Access N5 and N4 content (1,000+ items)</li>
+                                   <li style="padding: 8px 0; color: #666; border-bottom: 1px solid #eee;">🎯 Create custom quizzes with your selections</li>
+                                   <li style="padding: 8px 0; color: #666; border-bottom: 1px solid #eee;">📊 Track your learning progress</li>
+                                   <li style="padding: 8px 0; color: #666; border-bottom: 1px solid #eee;">💾 Save your study preferences</li>
+                                   <li style="padding: 8px 0; color: #666;">🚀 Upgrade anytime for all JLPT levels!</li>`
+                            }
                         </ul>
                     </div>
                     
@@ -1178,7 +1195,7 @@ async function handleSuccessfulPayment(session) {
                         console.log('✅ User account created for:', email, 'with username:', chosenUsername, 'and role: paid');
                         
                         // Send welcome email (with credentials)
-                        const welcomeEmailHtml = createWelcomeEmailHTML(chosenUsername, tempPassword, amount);
+                        const welcomeEmailHtml = createWelcomeEmailHTML(email, chosenUsername, tempPassword, amount);
                         console.log('📧 Sending welcome email to:', email);
                         
                         const emailSent = await sendEmail(
