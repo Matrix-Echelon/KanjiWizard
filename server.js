@@ -1120,7 +1120,7 @@ async function handleSuccessfulPayment(session) {
             );
         });
         
-        // Generate temporary password (still use random password for security)
+        // Generate temporary password (for new users only)
         const tempPassword = crypto.randomBytes(8).toString('hex');
         console.log('🔐 Generated temp password for:', email);
         
@@ -1140,81 +1140,99 @@ async function handleSuccessfulPayment(session) {
                 }
             );
         });
-     
+        
+        // 🔧 FIX: Check if user already exists (THIS WAS MISSING!)
+        const existingUser = await new Promise((resolve, reject) => {
+            db.query(
+                'SELECT id, username, email, role FROM users WHERE email = ? AND username = ?',
+                [email.trim(), chosenUsername.trim()],
+                (err, results) => {
+                    if (err) {
+                        console.error('❌ Error checking existing user:', err);
+                        reject(err);
+                    } else {
+                        console.log('👀 User lookup result:', results.length > 0 ? 'User exists' : 'New user');
+                        resolve(results);
+                    }
+                }
+            );
+        });
+        
         // Create actual user account with chosen username
         if (existingUser.length > 0) {
             // User exists - this is an upgrade
             console.log('🔄 Upgrading existing user to paid:', email, 'username:', chosenUsername);
-            db.query(
-                'UPDATE users SET role = ? WHERE email = ? AND username = ?',
-                ['paid', email, chosenUsername],
-                async (upgradeErr, upgradeResult) => {
-                    if (upgradeErr) {
-                        console.error('❌ Error upgrading user to paid:', upgradeErr);
-                        reject(upgradeErr);
-                    } else {
-                        console.log('✅ User upgraded to paid:', email, 'username:', chosenUsername);
-                        
-                        // Send upgrade email (no credentials)
-                        const upgradeEmailHtml = createUpgradeEmailHTML(email, chosenUsername, amount);
-                        console.log('📧 Sending upgrade confirmation email to:', email);
-                        
-                        const emailSent = await sendEmail(
-                            email,
-                            '🎉 Welcome to Kanji Wizard - Your Account has been Upgraded!',
-                            upgradeEmailHtml,
-                            'account_upgrade'
-                        );
-                        
-                        if (!emailSent) {
-                            console.error('❌ Failed to send upgrade email to:', email);
+            
+            await new Promise((resolve, reject) => {
+                db.query(
+                    'UPDATE users SET role = ? WHERE email = ? AND username = ?',
+                    ['paid', email, chosenUsername],
+                    async (upgradeErr, upgradeResult) => {
+                        if (upgradeErr) {
+                            console.error('❌ Error upgrading user to paid:', upgradeErr);
+                            reject(upgradeErr);
                         } else {
-                            console.log('✅ Upgrade email sent successfully to:', email);
+                            console.log('✅ User upgraded to paid:', email, 'username:', chosenUsername);
+                            
+                            // Send upgrade email (no credentials)
+                            const upgradeEmailHtml = createUpgradeEmailHTML(email, chosenUsername, amount);
+                            console.log('📧 Sending upgrade confirmation email to:', email);
+                            
+                            const emailSent = await sendEmail(
+                                email,
+                                '🎉 Welcome to Kanji Wizard - Your Account has been Upgraded!',
+                                upgradeEmailHtml,
+                                'upgrade'
+                            );
+                            
+                            if (!emailSent) {
+                                console.error('❌ Failed to send upgrade email to:', email);
+                            } else {
+                                console.log('✅ Upgrade email sent successfully to:', email);
+                            }
+                            
+                            resolve(upgradeResult);
                         }
-                        
-                        resolve(upgradeResult);
                     }
-                }
-            );
+                );
+            });
         } else {
             // New user - create account with paid role
             console.log('👤 Creating new paid user account:', email, 'username:', chosenUsername);
             
-            // Generate temporary password (only for new users)
-            const tempPassword = crypto.randomBytes(8).toString('hex');
-            console.log('🔐 Generated temp password for:', email);
-            
-            db.query(
-                'INSERT INTO users (username, user_password, email, role, temp_pass) VALUES (?, ?, ?, ?, ?)',
-                [chosenUsername, tempPassword, email, 'paid', 1],
-                async (err, result) => {
-                    if (err) {
-                        console.error('❌ Error creating user account:', err);
-                        reject(err);
-                    } else {
-                        console.log('✅ User account created for:', email, 'with username:', chosenUsername, 'and role: paid');
-                        
-                        // Send welcome email (with credentials)
-                        const welcomeEmailHtml = createWelcomeEmailHTML(email, chosenUsername, tempPassword, amount);
-                        console.log('📧 Sending welcome email to:', email);
-                        
-                        const emailSent = await sendEmail(
-                            email,
-                            '🎉 Welcome to Kanji Wizard - Your Account is Ready!',
-                            welcomeEmailHtml,
-                            'payment_confirmation'
-                        );
-                        
-                        if (!emailSent) {
-                            console.error('❌ Failed to send welcome email to:', email);
+            await new Promise((resolve, reject) => {
+                db.query(
+                    'INSERT INTO users (username, user_password, email, role, temp_pass) VALUES (?, ?, ?, ?, ?)',
+                    [chosenUsername, tempPassword, email, 'paid', 1],
+                    async (err, result) => {
+                        if (err) {
+                            console.error('❌ Error creating user account:', err);
+                            reject(err);
                         } else {
-                            console.log('✅ Welcome email sent successfully to:', email);
+                            console.log('✅ User account created for:', email, 'with username:', chosenUsername, 'and role: paid');
+                            
+                            // Send welcome email (with credentials)
+                            const welcomeEmailHtml = createWelcomeEmailHTML(email, chosenUsername, tempPassword, amount);
+                            console.log('📧 Sending welcome email to:', email);
+                            
+                            const emailSent = await sendEmail(
+                                email,
+                                '🎉 Welcome to Kanji Wizard - Your Account is Ready!',
+                                welcomeEmailHtml,
+                                'payment_confirmation'
+                            );
+                            
+                            if (!emailSent) {
+                                console.error('❌ Failed to send welcome email to:', email);
+                            } else {
+                                console.log('✅ Welcome email sent successfully to:', email);
+                            }
+                            
+                            resolve(result);
                         }
-                        
-                        resolve(result);
                     }
-                }
-            );
+                );
+            });
         }
         
         // Update pending registration status
@@ -1257,7 +1275,7 @@ async function handleSuccessfulPayment(session) {
                     process.env.ADMIN_EMAIL,
                     '🚨 Kanji Wizard - Payment Processing Error',
                     errorHtml,
-                    'error_notification'
+                    'error'
                 );
             } catch (emailError) {
                 console.error('❌ Failed to send admin error notification:', emailError);
@@ -1268,7 +1286,6 @@ async function handleSuccessfulPayment(session) {
         throw error;
     }
 }
-
 // Add this test endpoint to your server.js (remove after testing)
 app.get('/api/webhook-test', (req, res) => {
     console.log('🧪 Webhook test endpoint hit');
