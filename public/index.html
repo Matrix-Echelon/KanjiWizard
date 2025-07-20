@@ -1175,14 +1175,28 @@ function updateToggleButton(itemId, isSelected) {
 }
 
 function displayPaginatedItems() {
+    console.log('🐛 displayPaginatedItems called');
+    console.log('🐛 currentView:', currentView);
+    console.log('🐛 filteredItems.length:', filteredItems.length);
+    console.log('🐛 currentPage:', currentPage);
+    console.log('🐛 itemsPerPage:', itemsPerPage);
+    
     const startIndex = (currentPage - 1) * itemsPerPage;
     const endIndex = startIndex + itemsPerPage;
     const pageItems = filteredItems.slice(startIndex, endIndex);
     
+    console.log('🐛 startIndex:', startIndex, 'endIndex:', endIndex);
+    console.log('🐛 pageItems.length:', pageItems.length);
+    console.log('🐛 pageItems[0]:', pageItems[0]);
+    
     if (currentView === 'kanji') {
-        (pageItems);
+        console.log('🐛 About to call displayKanji with', pageItems.length, 'items');
+        displayKanji(pageItems);
+        console.log('🐛 displayKanji completed');
     } else {
+        console.log('🐛 About to call displayWords with', pageItems.length, 'items');
         displayWords(pageItems);
+        console.log('🐛 displayWords completed');
     }
     
     updatePagination();
@@ -1885,6 +1899,20 @@ function showQuizComplete() {
 
 function displayKanji(kanjiList) {
     const content = document.getElementById('content');
+    
+    console.log('🐛 displayKanji called with', kanjiList.length, 'items');
+    console.log('🐛 First kanji item:', kanjiList[0]);
+    
+    const content = document.getElementById('content');
+    console.log('🐛 content element found:', !!content);
+    
+    if (kanjiList.length === 0) {
+        console.log('🐛 No kanji found, showing error');
+        content.innerHTML = '<div class="error">No kanji found</div>';
+        return;
+    }
+
+    
     
     if (kanjiList.length === 0) {
         content.innerHTML = '<div class="error">No kanji found</div>';
