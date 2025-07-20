@@ -1898,7 +1898,6 @@ function showQuizComplete() {
 }
 
 function displayKanji(kanjiList) {
-    const content = document.getElementById('content');
     
     console.log('🐛 displayKanji called with', kanjiList.length, 'items');
     console.log('🐛 First kanji item:', kanjiList[0]);
@@ -1911,8 +1910,6 @@ function displayKanji(kanjiList) {
         content.innerHTML = '<div class="error">No kanji found</div>';
         return;
     }
-
-    
     
     if (kanjiList.length === 0) {
         content.innerHTML = '<div class="error">No kanji found</div>';
