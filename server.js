@@ -5,7 +5,9 @@ function validateEnvironment() {
         'STRIPE_SECRET_KEY',
         'STRIPE_WEBHOOK_SECRET',
         'EMAIL_USER',
-        'EMAIL_PASS'
+        'EMAIL_PASS',
+        'RECAPTCHA_SITE_KEY',
+        'RECAPTCHA_SECRET_KEY'  
     ];
     
     const missing = required.filter(key => !process.env[key]);
@@ -18,6 +20,7 @@ function validateEnvironment() {
         console.log('✅ All required environment variables are set');
         console.log('🔐 Using Stripe key:', process.env.STRIPE_SECRET_KEY.substring(0, 12) + '...');
         console.log('🪝 Webhook secret configured:', !!process.env.STRIPE_WEBHOOK_SECRET);
+        console.log('🛡️ reCAPTCHA configured:', !!process.env.RECAPTCHA_SITE_KEY);
     }
 }
 
@@ -249,6 +252,35 @@ async function sendEmail(to, subject, html, emailType) {
             }
         );
         
+        return false;
+    }
+}
+
+async function verifyRecaptcha(token) {
+    try {
+        const response = await fetch('https://www.google.com/recaptcha/api/siteverify', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: `secret=${process.env.RECAPTCHA_SECRET_KEY}&response=${token}`
+        });
+        
+        const data = await response.json();
+        
+        console.log('🛡️ reCAPTCHA verification result:', {
+            success: data.success,
+            score: data.score,
+            action: data.action
+        });
+        
+        // reCAPTCHA v3 returns a score from 0.0 to 1.0
+        // 1.0 = very likely human, 0.0 = very likely bot
+        // 0.5 is a reasonable threshold
+        return data.success && data.score >= 0.5;
+        
+    } catch (error) {
+        console.error('❌ reCAPTCHA verification error:', error);
         return false;
     }
 }
@@ -525,10 +557,11 @@ function validateEmail(email) {
     return emailRegex.test(email);
 }
 
-app.post('/api/register-free', checkIPBlacklist, function(req, res) {
+app.post('/api/register-free', checkIPBlacklist, async function(req, res) {
     try {
         const username = req.body.username;
         const email = req.body.email;
+        const recaptchaToken = req.body.recaptchaToken;
         
         // Validate inputs
         if (!username || !email) {
@@ -547,7 +580,18 @@ app.post('/api/register-free', checkIPBlacklist, function(req, res) {
             return res.status(400).json({ error: 'Username can only contain letters, numbers, and underscores' });
         }
         
-        console.log('🆓 Free registration attempt:', { username: username, email: email });
+        // 🛡️ Verify reCAPTCHA first
+        if (!recaptchaToken) {
+            return res.status(400).json({ error: 'Security verification missing. Please try again.' });
+        }
+        
+        const isHuman = await verifyRecaptcha(recaptchaToken);
+        if (!isHuman) {
+            console.log('🤖 Bot registration attempt blocked:', { username, email, ip: req.ip });
+            return res.status(400).json({ error: 'Security verification failed. Please try again.' });
+        }
+        
+        console.log('🆓 Free registration attempt (verified human):', { username: username, email: email });
         
         // Check if username or email already exists
         db.query(
@@ -579,7 +623,7 @@ app.post('/api/register-free', checkIPBlacklist, function(req, res) {
                             return res.status(500).json({ error: 'Account creation failed' });
                         }
                         
-                        console.log('✅ Free account created for:', email);
+                        console.log('✅ Free account created for:', email, '(human verified)');
                         const userId = result.insertId;
                         
                         // Send welcome email
