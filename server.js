@@ -2112,6 +2112,46 @@ app.post('/api/quiz-result', requireAuth, (req, res) => {
     });
 });
 
+// Add item to user's focus list
+app.post('/api/focus-list', requireAuth, (req, res) => {
+    const { userId, itemType, itemId } = req.body;
+    
+    if (parseInt(userId) !== req.session.userId) {
+        return res.status(403).json({ error: 'Access denied' });
+    }
+    
+    // Validate item type
+    if (!['kanji', 'word'].includes(itemType)) {
+        return res.status(400).json({ error: 'Invalid item type' });
+    }
+    
+    console.log('🎯 Adding to focus list:', { userId, itemType, itemId });
+    
+    const query = `
+        INSERT IGNORE INTO user_focus_items (user_id, item_type, item_id) 
+        VALUES (?, ?, ?)
+    `;
+    
+    db.query(query, [userId, itemType, itemId], (err, result) => {
+        if (err) {
+            console.error('❌ Error adding to focus list:', err);
+            return res.status(500).json({ error: 'Database error' });
+        }
+        
+        if (result.affectedRows === 0) {
+            // Item already exists (INSERT IGNORE prevented duplicate)
+            return res.json({ 
+                success: true, 
+                message: 'Item already in focus list',
+                error: 'Item already in focus list'
+            });
+        }
+        
+        console.log('✅ Added to focus list successfully');
+        res.json({ success: true, message: 'Added to focus list' });
+    });
+});
+
 // Save quiz session with details
 app.post('/api/save-quiz-session', requireAuth, (req, res) => {
     const { userId, sessionType, totalQuestions, correctAnswers, sessionDuration, questionDetails } = req.body;
