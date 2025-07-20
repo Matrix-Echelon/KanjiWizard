@@ -1052,11 +1052,15 @@ function loadKanji() {
             console.log('🐛 Is array:', Array.isArray(data));
             console.log('🐛 Data length:', data ? data.length : 'no length');
             console.log('🐛 First item:', data && data[0] ? data[0] : 'no first item');
-            
+            console.log('🐛 About to shuffle array...');
             totalItems = shuffleArray(data);
+            console.log('🐛 Shuffled, totalItems length:', totalItems.length); 
             filteredItems = totalItems;
+            console.log('🐛 Set filteredItems, length:', filteredItems.length);
             currentPage = 1;
+            console.log('🐛 About to call displayPaginatedItems()...');
             displayPaginatedItems();
+            console.log('🐛 displayPaginatedItems() completed');
         }).catch(error => {
             console.error('🐛 Kanji loading error:', error);
             content.innerHTML = '<div class="error">Error loading kanji: ' + error.message + '</div>';
