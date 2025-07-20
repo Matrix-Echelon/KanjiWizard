@@ -1955,8 +1955,8 @@ function displayWords(wordList) {
                 ${isSelected ? '✓ Selected' : '+ Add to Quiz'}
             </button>
             <button class="focus-btn" 
-                    id="focus-kanji-${kanji.id}"
-                    onclick="toggleFocusList('kanji', ${kanji.id})">
+                    id="focus-word-${word.id}"
+                    onclick="toggleFocusList('word', ${word.id})">
                 🎯 Focus
             </button>
             ` : '<div class="guest-notice">Login to add to quiz</div>'}
