@@ -1037,35 +1037,55 @@ function loadKanji() {
     const content = document.getElementById('content');
     content.innerHTML = '<div class="loading">Loading kanji...</div>';
     
-    // For guests, we don't need to load user selections
+    console.log('🐛 loadKanji called, isAuthenticated:', isAuthenticated);
+    
     if (isAuthenticated) {
         Promise.all([
-            fetch('/api/kanji').then(response => response.json()),
+            fetch('/api/kanji').then(response => {
+                console.log('🐛 Kanji API response status:', response.status);
+                return response.json();
+            }),
             loadUserSelections('kanji')
         ]).then(([data]) => {
+            console.log('🐛 Kanji data received:', data);
+            console.log('🐛 Data type:', typeof data);
+            console.log('🐛 Is array:', Array.isArray(data));
+            console.log('🐛 Data length:', data ? data.length : 'no length');
+            console.log('🐛 First item:', data && data[0] ? data[0] : 'no first item');
+            
             totalItems = shuffleArray(data);
             filteredItems = totalItems;
             currentPage = 1;
             displayPaginatedItems();
         }).catch(error => {
+            console.error('🐛 Kanji loading error:', error);
             content.innerHTML = '<div class="error">Error loading kanji: ' + error.message + '</div>';
         });
     } else {
         // Guest mode - just load kanji
         fetch('/api/kanji')
-            .then(response => response.json())
+            .then(response => {
+                console.log('🐛 Guest kanji API response status:', response.status);
+                return response.json();
+            })
             .then(data => {
+                console.log('🐛 Guest kanji data received:', data);
+                console.log('🐛 Guest data type:', typeof data);
+                console.log('🐛 Guest is array:', Array.isArray(data));
+                console.log('🐛 Guest data length:', data ? data.length : 'no length');
+                console.log('🐛 Guest first item:', data && data[0] ? data[0] : 'no first item');
+                
                 totalItems = shuffleArray(data);
                 filteredItems = totalItems;
                 currentPage = 1;
                 displayPaginatedItems();
             })
             .catch(error => {
+                console.error('🐛 Guest kanji loading error:', error);
                 content.innerHTML = '<div class="error">Error loading kanji: ' + error.message + '</div>';
             });
     }
 }
-
 function loadWords() {
     const content = document.getElementById('content');
     content.innerHTML = '<div class="loading">Loading words...</div>';
