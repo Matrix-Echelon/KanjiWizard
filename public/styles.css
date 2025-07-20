@@ -3229,3 +3229,30 @@ body {
         padding: 2px 8px;
     }
 }
+
+.focus-btn {
+    width: 100%;
+    padding: 8px 12px;
+    margin-top: 8px;
+    border: 2px solid #ff6b6b;
+    border-radius: 5px;
+    background-color: white;
+    color: #ff6b6b;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: bold;
+    transition: all 0.3s ease;
+}
+
+.focus-btn:hover {
+    background-color: #fff5f5;
+}
+
+.focus-btn.in-focus {
+    background-color: #ff6b6b;
+    color: white;
+}
+
+.focus-btn.in-focus:hover {
+    background-color: #ff5252;
+}
