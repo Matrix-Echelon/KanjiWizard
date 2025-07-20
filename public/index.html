@@ -1911,6 +1911,7 @@ function displayKanji(kanjiList) {
     if (isAuthenticated && userId) {
         kanjiList.forEach(kanji => {
             loadItemStats(userId, 'kanji', kanji.id);
+            loadFocusStatus('kanji', kanji.id);
         });
     }
 }
@@ -1959,6 +1960,7 @@ function displayWords(wordList) {
     if (isAuthenticated && userId) {
         wordList.forEach(word => {
             loadItemStats(userId, 'word', word.id);
+            loadFocusStatus('word', word.id);
         });
     }
 }
@@ -1998,6 +2000,67 @@ function loadItemStats(userId, itemType, itemId) {
                 statsElement.innerHTML = '<span class="stats-error">Stats unavailable</span>';
             }
         });
+}
+
+
+function toggleFocusList(itemType, itemId) {
+    const userId = getCurrentUserId();
+    const button = document.getElementById(`focus-${itemType}-${itemId}`);
+    const isInFocus = button.classList.contains('in-focus');
+    
+    const method = isInFocus ? 'DELETE' : 'POST';
+    const url = isInFocus ? `/api/focus-list/${userId}/${itemType}/${itemId}` : '/api/focus-list';
+    
+    const requestBody = method === 'POST' ? {
+        userId: userId,
+        itemType: itemType,
+        itemId: itemId
+    } : {};
+    
+    fetch(url, {
+        method: method,
+        headers: { 'Content-Type': 'application/json' },
+        body: method === 'POST' ? JSON.stringify(requestBody) : undefined
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            updateFocusButton(itemType, itemId, !isInFocus);
+        } else {
+            console.error('Failed to update focus list:', data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error updating focus list:', error);
+    });
+}
+
+// Load focus status for an item
+function loadFocusStatus(itemType, itemId) {
+    const userId = getCurrentUserId();
+    
+    fetch(`/api/focus-list/${userId}/${itemType}/${itemId}`)
+        .then(response => response.json())
+        .then(data => {
+            updateFocusButton(itemType, itemId, data.inFocus);
+        })
+        .catch(error => {
+            console.error('Error loading focus status:', error);
+        });
+}
+
+// Update focus button appearance
+function updateFocusButton(itemType, itemId, isInFocus) {
+    const button = document.getElementById(`focus-${itemType}-${itemId}`);
+    if (button) {
+        if (isInFocus) {
+            button.classList.add('in-focus');
+            button.textContent = '🎯 Focused';
+        } else {
+            button.classList.remove('in-focus');
+            button.textContent = '🎯 Focus';
+        }
+    }
 }
 
 function searchItems() {
