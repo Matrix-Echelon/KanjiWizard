@@ -1011,18 +1011,6 @@ async function handleSuccessfulPayment(session) {
             sessionId: session.id
         });
         
-        // Check username availability one final time (in case of race condition)
-        const usernameStillAvailable = await new Promise((resolve, reject) => {
-            db.query('SELECT id FROM users WHERE username = ?', [chosenUsername], (err, results) => {
-                if (err) reject(err);
-                else resolve(results.length === 0);
-            });
-        });
-        
-        if (!usernameStillAvailable) {
-            throw new Error(`Username '${chosenUsername}' was taken during payment processing`);
-        }
-        
         // Record payment in database
         await new Promise((resolve, reject) => {
             db.query(
@@ -1157,8 +1145,8 @@ async function handleSuccessfulPayment(session) {
         // Create actual user account with chosen username
 await new Promise((resolve, reject) => {
     db.query(
-        'SELECT id, role FROM users WHERE email = ?',
-        [email],
+        'SELECT id, role FROM users WHERE email = ? AND username = ?',
+        [email, chosenUsername],
         (err, existingUser) => {
             if (err) {
                 console.error('❌ Error checking existing user:', err);
@@ -1168,23 +1156,23 @@ await new Promise((resolve, reject) => {
             
             if (existingUser.length > 0) {
                 // User exists - this is an upgrade
-                console.log('🔄 Upgrading existing user to paid:', email);
+                console.log('🔄 Upgrading existing user to paid:', email, 'username:', chosenUsername);
                 db.query(
-                    'UPDATE users SET role = ? WHERE email = ?',
-                    ['paid', email],
+                    'UPDATE users SET role = ? WHERE email = ? AND username = ?',
+                    ['paid', email, chosenUsername],
                     (upgradeErr, upgradeResult) => {
                         if (upgradeErr) {
                             console.error('❌ Error upgrading user to paid:', upgradeErr);
                             reject(upgradeErr);
                         } else {
-                            console.log('✅ User upgraded to paid:', email);
+                            console.log('✅ User upgraded to paid:', email, 'username:', chosenUsername);
                             resolve(upgradeResult);
                         }
                     }
                 );
             } else {
                 // New user - create account with paid role
-                console.log('👤 Creating new paid user account:', email);
+                console.log('👤 Creating new paid user account:', email, 'username:', chosenUsername);
                 db.query(
                     'INSERT INTO users (username, user_password, email, role, temp_pass) VALUES (?, ?, ?, ?, ?)',
                     [chosenUsername, tempPassword, email, 'paid', 1],
