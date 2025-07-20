@@ -624,7 +624,8 @@ app.post('/api/register-free', checkIPBlacklist, function(req, res) {
     }
 });
 
-function createWelcomeEmailHTML(username, tempPassword) {
+// Email template for NEW users (with credentials)
+function createWelcomeEmailHTML(email, username, tempPassword, amount) {
     return `
         <!DOCTYPE html>
         <html>
@@ -637,56 +638,129 @@ function createWelcomeEmailHTML(username, tempPassword) {
             <div style="max-width: 600px; margin: 0 auto; background: white; border-radius: 15px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
                 
                 <!-- Header -->
-                <div style="background: linear-gradient(135deg, #28a745, #20c997); color: white; padding: 40px 30px; text-align: center;">
+                <div style="background: linear-gradient(135deg, #4a90e2, #357abd); color: white; padding: 40px 30px; text-align: center;">
                     <h1 style="margin: 0; font-size: 28px;">🗾 Welcome to Kanji Wizard!</h1>
-                    <p style="margin: 10px 0 0 0; font-size: 16px; opacity: 0.9;">Your free account is ready</p>
+                    <p style="margin: 10px 0 0 0; font-size: 16px; opacity: 0.9;">Your Japanese learning journey starts now</p>
                 </div>
                 
                 <!-- Content -->
                 <div style="padding: 40px 30px;">
-                    <h2 style="color: #28a745; margin-bottom: 20px;">🎉 Account Created Successfully!</h2>
+                    <h2 style="color: #4a90e2; margin-bottom: 20px;">🎉 Payment Successful!</h2>
                     <p style="font-size: 16px; line-height: 1.6; color: #333;">
-                        Welcome to Kanji Wizard! Your free account has been created and you now have access to N5 and N4 level content with progress saving.
+                        Thank you for purchasing Kanji Wizard! Your payment has been successfully processed and your account is ready.
                     </p>
+                    
+                    <!-- Payment Details -->
+                    <div style="background: #f8f9fa; padding: 25px; border-radius: 10px; margin: 25px 0; border-left: 4px solid #4a90e2;">
+                        <h3 style="color: #333; margin-top: 0;">💳 Payment Details</h3>
+                        <p style="margin: 8px 0; color: #666;"><strong>Amount:</strong> $${amount}</p>
+                        <p style="margin: 8px 0; color: #666;"><strong>Email:</strong> ${email}</p>
+                    </div>
                     
                     <!-- Login Credentials -->
                     <div style="background: #d4edda; padding: 25px; border-radius: 10px; margin: 25px 0; border: 2px solid #28a745;">
-                        <h3 style="color: #155724; margin-top: 0;">🔐 Your Login Credentials</h3>
-                        <p style="margin: 12px 0; color: #155724; font-size: 16px;"><strong>Username:</strong> <code style="background: rgba(255,255,255,0.8); padding: 4px 8px; border-radius: 4px; font-size: 14px;">` + username + `</code></p>
-                        <p style="margin: 12px 0; color: #155724; font-size: 16px;"><strong>Temporary Password:</strong> <code style="background: rgba(255,255,255,0.8); padding: 4px 8px; border-radius: 4px; font-size: 14px;">` + tempPassword + `</code></p>
+                        <h3 style="color: #155724; margin-top: 0;">🔐 Your Account Credentials</h3>
+                        <p style="margin: 12px 0; color: #155724; font-size: 16px;"><strong>Username:</strong> <code style="background: rgba(255,255,255,0.8); padding: 4px 8px; border-radius: 4px; font-size: 14px;">${username}</code></p>
+                        <p style="margin: 12px 0; color: #155724; font-size: 16px;"><strong>Temporary Password:</strong> <code style="background: rgba(255,255,255,0.8); padding: 4px 8px; border-radius: 4px; font-size: 14px;">${tempPassword}</code></p>
+                        <div style="background: #fff3cd; padding: 15px; border-radius: 8px; margin-top: 15px; border: 1px solid #ffc107;">
+                            <p style="margin: 0; color: #856404; font-size: 14px;">
+                                ⚠️ <strong>Important:</strong> Please change your password after logging in for the first time for security.
+                            </p>
+                        </div>
                     </div>
                     
-                    <!-- What You Get -->
-                    <div style="background: #f8f9fa; padding: 25px; border-radius: 10px; margin: 25px 0; border-left: 4px solid #28a745;">
-                        <h3 style="color: #333; margin-top: 0;">✨ What You Can Do</h3>
+                    <!-- Features -->
+                    <div style="margin: 30px 0;">
+                        <h3 style="color: #333; margin-bottom: 15px;">✨ What You Can Do Now</h3>
                         <ul style="list-style: none; padding: 0;">
-                            <li style="padding: 5px 0; color: #666;">📚 Access N5 and N4 level content</li>
-                            <li style="padding: 5px 0; color: #666;">💾 Save your progress and quiz selections</li>
-                            <li style="padding: 5px 0; color: #666;">📊 Track your learning statistics</li>
-                            <li style="padding: 5px 0; color: #666;">🎯 Create custom quizzes</li>
+                            <li style="padding: 8px 0; color: #666; border-bottom: 1px solid #eee;">📚 Access all JLPT levels (N5-N1)</li>
+                            <li style="padding: 8px 0; color: #666; border-bottom: 1px solid #eee;">🎯 Create custom quizzes with your selected items</li>
+                            <li style="padding: 8px 0; color: #666; border-bottom: 1px solid #eee;">📊 Track your progress with detailed statistics</li>
+                            <li style="padding: 8px 0; color: #666; border-bottom: 1px solid #eee;">⚡ Take unlimited quizzes</li>
+                            <li style="padding: 8px 0; color: #666;">🎨 Sort by frequency to study most common words first</li>
                         </ul>
-                    </div>
-                    
-                    <!-- Security Notice -->
-                    <div style="background: #fff3cd; padding: 20px; border-radius: 10px; margin: 25px 0; border: 2px solid #ffc107;">
-                        <h3 style="color: #856404; margin-top: 0;">🔒 Important Security Steps</h3>
-                        <ol style="color: #856404; line-height: 1.6;">
-                            <li>Log in with the credentials above</li>
-                            <li>Change your temporary password</li>
-                            <li>Start exploring N5 and N4 content!</li>
-                        </ol>
-                    </div>
-                    
-                    <!-- Upgrade Notice -->
-                    <div style="background: #e7f3ff; padding: 20px; border-radius: 10px; margin: 25px 0; border: 2px solid #4a90e2;">
-                        <h3 style="color: #4a90e2; margin-top: 0;">🚀 Want More?</h3>
-                        <p style="color: #4a90e2; margin: 0;">Upgrade to full access for just $9.99 to unlock N3, N2, and N1 content!</p>
                     </div>
                     
                     <!-- CTA Button -->
                     <div style="text-align: center; margin: 30px 0;">
                         <a href="https://thekanjiwizard.com" style="display: inline-block; background: linear-gradient(135deg, #28a745, #20c997); color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px;">
                             🚀 Start Learning Now
+                        </a>
+                    </div>
+                </div>
+                
+                <!-- Footer -->
+                <div style="background: #f8f9fa; padding: 20px 30px; text-align: center; border-top: 1px solid #dee2e6;">
+                    <p style="margin: 0; color: #666; font-size: 14px;">
+                        Need help? Contact us at <a href="mailto:support@thekanjiwizard.com" style="color: #4a90e2;">support@thekanjiwizard.com</a>
+                    </p>
+                    <p style="margin: 10px 0 0 0; color: #999; font-size: 12px;">
+                        © 2025 Kanji Wizard. All rights reserved.
+                    </p>
+                </div>
+            </div>
+        </body>
+        </html>
+    `;
+}
+
+// Email template for UPGRADES (no credentials)
+function createUpgradeEmailHTML(email, username, amount) {
+    return `
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Account Upgraded!</title>
+        </head>
+        <body style="margin: 0; padding: 20px; font-family: Arial, sans-serif; background-color: #f5f5f5;">
+            <div style="max-width: 600px; margin: 0 auto; background: white; border-radius: 15px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
+                
+                <!-- Header -->
+                <div style="background: linear-gradient(135deg, #28a745, #20c997); color: white; padding: 40px 30px; text-align: center;">
+                    <h1 style="margin: 0; font-size: 28px;">🚀 Account Upgraded!</h1>
+                    <p style="margin: 10px 0 0 0; font-size: 16px; opacity: 0.9;">You now have full access to Kanji Wizard</p>
+                </div>
+                
+                <!-- Content -->
+                <div style="padding: 40px 30px;">
+                    <h2 style="color: #28a745; margin-bottom: 20px;">🎉 Upgrade Successful!</h2>
+                    <p style="font-size: 16px; line-height: 1.6; color: #333;">
+                        Great news! Your account has been successfully upgraded to full access. You can now enjoy all premium features of Kanji Wizard.
+                    </p>
+                    
+                    <!-- Account Details -->
+                    <div style="background: #f8f9fa; padding: 25px; border-radius: 10px; margin: 25px 0; border-left: 4px solid #28a745;">
+                        <h3 style="color: #333; margin-top: 0;">👤 Account Information</h3>
+                        <p style="margin: 8px 0; color: #666;"><strong>Username:</strong> ${username}</p>
+                        <p style="margin: 8px 0; color: #666;"><strong>Email:</strong> ${email}</p>
+                        <p style="margin: 8px 0; color: #666;"><strong>Account Type:</strong> Full Access</p>
+                    </div>
+                    
+                    <!-- No Password Change Needed -->
+                    <div style="background: #d1ecf1; padding: 20px; border-radius: 10px; margin: 25px 0; border: 2px solid #bee5eb;">
+                        <h3 style="color: #0c5460; margin-top: 0;">🔐 Login Information</h3>
+                        <p style="color: #0c5460; margin: 0;">
+                            <strong>No action needed!</strong> Continue using your existing username and password to log in. Your credentials remain the same.
+                        </p>
+                    </div>
+                    
+                    <!-- New Features -->
+                    <div style="margin: 30px 0;">
+                        <h3 style="color: #333; margin-bottom: 15px;">🆕 Now Available to You</h3>
+                        <ul style="list-style: none; padding: 0;">
+                            <li style="padding: 8px 0; color: #666; border-bottom: 1px solid #eee;">📚 <strong>N3, N2, N1 Content</strong> - Advanced JLPT levels unlocked</li>
+                            <li style="padding: 8px 0; color: #666; border-bottom: 1px solid #eee;">📈 <strong>Advanced Analytics</strong> - Detailed performance insights</li>
+                            <li style="padding: 8px 0; color: #666; border-bottom: 1px solid #eee;">🎨 <strong>Frequency Sorting</strong> - Study most common words first</li>
+                            <li style="padding: 8px 0; color: #666;">⚡ <strong>All Future Features</strong> - Lifetime updates included</li>
+                        </ul>
+                    </div>
+                    
+                    <!-- CTA Button -->
+                    <div style="text-align: center; margin: 30px 0;">
+                        <a href="https://thekanjiwizard.com" style="display: inline-block; background: linear-gradient(135deg, #28a745, #20c997); color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px;">
+                            🎯 Explore Full Features
                         </a>
                     </div>
                 </div>
@@ -705,6 +779,7 @@ function createWelcomeEmailHTML(username, tempPassword) {
         </html>
     `;
 }
+
 
 function upgradeUserToPaid(email, callback) {
     db.query(
@@ -1048,148 +1123,82 @@ async function handleSuccessfulPayment(session) {
                 }
             );
         });
-        
-        // Enhanced confirmation email
-        const confirmationHtml = `
-            <!DOCTYPE html>
-            <html>
-            <head>
-                <meta charset="UTF-8">
-                <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                <title>Welcome to Kanji Wizard!</title>
-            </head>
-            <body style="margin: 0; padding: 20px; font-family: Arial, sans-serif; background-color: #f5f5f5;">
-                <div style="max-width: 600px; margin: 0 auto; background: white; border-radius: 15px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
-                    
-                    <!-- Header -->
-                    <div style="background: linear-gradient(135deg, #4a90e2, #357abd); color: white; padding: 40px 30px; text-align: center;">
-                        <h1 style="margin: 0; font-size: 28px;">🗾 Welcome to Kanji Wizard!</h1>
-                        <p style="margin: 10px 0 0 0; font-size: 16px; opacity: 0.9;">Your Japanese learning journey starts now</p>
-                    </div>
-                    
-                    <!-- Content -->
-                    <div style="padding: 40px 30px;">
-                        <h2 style="color: #4a90e2; margin-bottom: 20px;">🎉 Payment Successful!</h2>
-                        <p style="font-size: 16px; line-height: 1.6; color: #333;">
-                            Thank you for purchasing Kanji Wizard! Your payment has been successfully processed and your account is ready.
-                        </p>
-                        
-                        <!-- Payment Details -->
-                        <div style="background: #f8f9fa; padding: 25px; border-radius: 10px; margin: 25px 0; border-left: 4px solid #4a90e2;">
-                            <h3 style="color: #333; margin-top: 0;">💳 Payment Details</h3>
-                            <p style="margin: 8px 0; color: #666;"><strong>Amount:</strong> $${amount}</p>
-                            <p style="margin: 8px 0; color: #666;"><strong>Email:</strong> ${email}</p>
-                            <p style="margin: 8px 0; color: #666;"><strong>Transaction ID:</strong> ${paymentIntentId}</p>
-                        </div>
-                        
-                        <!-- Login Credentials -->
-                        <div style="background: #d4edda; padding: 25px; border-radius: 10px; margin: 25px 0; border: 2px solid #28a745;">
-                            <h3 style="color: #155724; margin-top: 0;">🔐 Your Account Credentials</h3>
-                            <p style="margin: 12px 0; color: #155724; font-size: 16px;"><strong>Username:</strong> <code style="background: rgba(255,255,255,0.8); padding: 4px 8px; border-radius: 4px; font-size: 14px;">${chosenUsername}</code></p>
-                            <p style="margin: 12px 0; color: #155724; font-size: 16px;"><strong>Temporary Password:</strong> <code style="background: rgba(255,255,255,0.8); padding: 4px 8px; border-radius: 4px; font-size: 14px;">${tempPassword}</code></p>
-                            <div style="background: #fff3cd; padding: 15px; border-radius: 8px; margin-top: 15px; border: 1px solid #ffc107;">
-                                <p style="margin: 0; color: #856404; font-size: 14px;">
-                                    ⚠️ <strong>Important:</strong> Please change your password after logging in for the first time for security.
-                                </p>
-                            </div>
-                        </div>
-                        
-                        <!-- Features -->
-                        <div style="margin: 30px 0;">
-                            <h3 style="color: #333; margin-bottom: 15px;">✨ What You Can Do Now</h3>
-                            <ul style="list-style: none; padding: 0;">
-                                <li style="padding: 8px 0; color: #666; border-bottom: 1px solid #eee;">📚 Access all JLPT levels (N5-N1)</li>
-                                <li style="padding: 8px 0; color: #666; border-bottom: 1px solid #eee;">🎯 Create custom quizzes with your selected items</li>
-                                <li style="padding: 8px 0; color: #666; border-bottom: 1px solid #eee;">📊 Track your progress with detailed statistics</li>
-                                <li style="padding: 8px 0; color: #666; border-bottom: 1px solid #eee;">⚡ Take unlimited quizzes</li>
-                                <li style="padding: 8px 0; color: #666;">🎨 Sort by frequency to study most common words first</li>
-                            </ul>
-                        </div>
-                        
-                        <!-- CTA Button -->
-                        <div style="text-align: center; margin: 30px 0;">
-                            <a href="https://thekanjiwizard.com" style="display: inline-block; background: linear-gradient(135deg, #28a745, #20c997); color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px;">
-                                🚀 Start Learning Now
-                            </a>
-                        </div>
-                    </div>
-                    
-                    <!-- Footer -->
-                    <div style="background: #f8f9fa; padding: 20px 30px; text-align: center; border-top: 1px solid #dee2e6;">
-                        <p style="margin: 0; color: #666; font-size: 14px;">
-                            Need help? Contact us at <a href="mailto:support@thekanjiwizard.com" style="color: #4a90e2;">support@thekanjiwizard.com</a>
-                        </p>
-                        <p style="margin: 10px 0 0 0; color: #999; font-size: 12px;">
-                            © 2025 Kanji Wizard. All rights reserved.
-                        </p>
-                    </div>
-                </div>
-            </body>
-            </html>
-        `;
-        
-        console.log('📧 Attempting to send confirmation email...');
-        const emailSent = await sendEmail(
-            email, 
-            '🎉 Welcome to Kanji Wizard - Your Account is Ready!', 
-            confirmationHtml,
-            'payment_confirmation'
-        );
-        
-        if (!emailSent) {
-            console.error('❌ Failed to send confirmation email to:', email);
-        } else {
-            console.log('✅ Confirmation email sent successfully to:', email);
-        }
-        
+     
         // Create actual user account with chosen username
-await new Promise((resolve, reject) => {
-    db.query(
-        'SELECT id, role FROM users WHERE email = ? AND username = ?',
-        [email, chosenUsername],
-        (err, existingUser) => {
-            if (err) {
-                console.error('❌ Error checking existing user:', err);
-                reject(err);
-                return;
-            }
+        if (existingUser.length > 0) {
+            // User exists - this is an upgrade
+            console.log('🔄 Upgrading existing user to paid:', email, 'username:', chosenUsername);
+            db.query(
+                'UPDATE users SET role = ? WHERE email = ? AND username = ?',
+                ['paid', email, chosenUsername],
+                async (upgradeErr, upgradeResult) => {
+                    if (upgradeErr) {
+                        console.error('❌ Error upgrading user to paid:', upgradeErr);
+                        reject(upgradeErr);
+                    } else {
+                        console.log('✅ User upgraded to paid:', email, 'username:', chosenUsername);
+                        
+                        // Send upgrade email (no credentials)
+                        const upgradeEmailHtml = createUpgradeEmailHTML(email, chosenUsername, amount);
+                        console.log('📧 Sending upgrade confirmation email to:', email);
+                        
+                        const emailSent = await sendEmail(
+                            email,
+                            '🎉 Welcome to Kanji Wizard - Your Account has been Upgraded!',
+                            upgradeEmailHtml,
+                            'account_upgrade'
+                        );
+                        
+                        if (!emailSent) {
+                            console.error('❌ Failed to send upgrade email to:', email);
+                        } else {
+                            console.log('✅ Upgrade email sent successfully to:', email);
+                        }
+                        
+                        resolve(upgradeResult);
+                    }
+                }
+            );
+        } else {
+            // New user - create account with paid role
+            console.log('👤 Creating new paid user account:', email, 'username:', chosenUsername);
             
-            if (existingUser.length > 0) {
-                // User exists - this is an upgrade
-                console.log('🔄 Upgrading existing user to paid:', email, 'username:', chosenUsername);
-                db.query(
-                    'UPDATE users SET role = ? WHERE email = ? AND username = ?',
-                    ['paid', email, chosenUsername],
-                    (upgradeErr, upgradeResult) => {
-                        if (upgradeErr) {
-                            console.error('❌ Error upgrading user to paid:', upgradeErr);
-                            reject(upgradeErr);
+            // Generate temporary password (only for new users)
+            const tempPassword = crypto.randomBytes(8).toString('hex');
+            console.log('🔐 Generated temp password for:', email);
+            
+            db.query(
+                'INSERT INTO users (username, user_password, email, role, temp_pass) VALUES (?, ?, ?, ?, ?)',
+                [chosenUsername, tempPassword, email, 'paid', 1],
+                async (err, result) => {
+                    if (err) {
+                        console.error('❌ Error creating user account:', err);
+                        reject(err);
+                    } else {
+                        console.log('✅ User account created for:', email, 'with username:', chosenUsername, 'and role: paid');
+                        
+                        // Send welcome email (with credentials)
+                        const welcomeEmailHtml = createWelcomeEmailHTML(email, chosenUsername, tempPassword, amount);
+                        console.log('📧 Sending welcome email to:', email);
+                        
+                        const emailSent = await sendEmail(
+                            email,
+                            '🎉 Welcome to Kanji Wizard - Your Account is Ready!',
+                            welcomeEmailHtml,
+                            'payment_confirmation'
+                        );
+                        
+                        if (!emailSent) {
+                            console.error('❌ Failed to send welcome email to:', email);
                         } else {
-                            console.log('✅ User upgraded to paid:', email, 'username:', chosenUsername);
-                            resolve(upgradeResult);
+                            console.log('✅ Welcome email sent successfully to:', email);
                         }
+                        
+                        resolve(result);
                     }
-                );
-            } else {
-                // New user - create account with paid role
-                console.log('👤 Creating new paid user account:', email, 'username:', chosenUsername);
-                db.query(
-                    'INSERT INTO users (username, user_password, email, role, temp_pass) VALUES (?, ?, ?, ?, ?)',
-                    [chosenUsername, tempPassword, email, 'paid', 1],
-                    (err, result) => {
-                        if (err) {
-                            console.error('❌ Error creating user account:', err);
-                            reject(err);
-                        } else {
-                            console.log('✅ User account created for:', email, 'with username:', chosenUsername, 'and role: paid');
-                            resolve(result);
-                        }
-                    }
-                );
-            }
+                }
+            );
         }
-    );
-});
         
         // Update pending registration status
         await new Promise((resolve, reject) => {
