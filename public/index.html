@@ -2612,14 +2612,16 @@ function startFocusQuiz() {
             quizResults = [];
             hasAnswered = false;
             
-            // Convert focus items to quiz format
+            // 🔧 FIX: Convert focus items to proper quiz format with all needed data
             quizData = focusItems.map(item => ({
                 id: item.item_id,
                 item_type: item.item_type,
                 kanji_char: item.kanji_char,
                 word: item.word,
                 reading: item.reading,
-                meaning: item.meaning
+                meaning: item.meaning,
+                onyomi: item.onyomi || null,
+                kunyomi: item.kunyomi || null
             }));
             
             // Shuffle and limit to reasonable size
