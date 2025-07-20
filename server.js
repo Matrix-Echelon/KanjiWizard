@@ -2115,6 +2115,13 @@ app.post('/api/quiz-result', requireAuth, (req, res) => {
 // Save quiz session with details
 app.post('/api/save-quiz-session', requireAuth, (req, res) => {
     const { userId, sessionType, totalQuestions, correctAnswers, sessionDuration, questionDetails } = req.body;
+
+    // 🔧 ADD THIS DEBUG:
+    console.log('🐛 Received session data:', {
+        userId, sessionType, totalQuestions, correctAnswers, sessionDuration,
+        questionDetailsCount: questionDetails ? questionDetails.length : 0,
+        firstDetail: questionDetails ? questionDetails[0] : null
+    });
     
     // Verify user owns this session
     if (parseInt(userId) !== req.session.userId) {
