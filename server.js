@@ -1977,6 +1977,46 @@ app.get('/api/words/search', guestAccess, function(req, res) {
     }
 });
 
+// Remove item from focus list
+app.delete('/api/focus-list/:userId/:itemType/:itemId', requireAuth, (req, res) => {
+    const { userId, itemType, itemId } = req.params;
+    
+    if (parseInt(userId) !== req.session.userId) {
+        return res.status(403).json({ error: 'Access denied' });
+    }
+    
+    const query = 'DELETE FROM user_focus_items WHERE user_id = ? AND item_type = ? AND item_id = ?';
+    
+    db.query(query, [userId, itemType, itemId], (err, result) => {
+        if (err) {
+            console.error('❌ Error removing from focus list:', err);
+            return res.status(500).json({ error: 'Database error' });
+        }
+        
+        res.json({ success: true, message: 'Removed from focus list' });
+    });
+});
+
+// Check if item is in focus list
+app.get('/api/focus-list/:userId/:itemType/:itemId', requireAuth, (req, res) => {
+    const { userId, itemType, itemId } = req.params;
+    
+    if (parseInt(userId) !== req.session.userId) {
+        return res.status(403).json({ error: 'Access denied' });
+    }
+    
+    const query = 'SELECT id FROM user_focus_items WHERE user_id = ? AND item_type = ? AND item_id = ?';
+    
+    db.query(query, [userId, itemType, itemId], (err, results) => {
+        if (err) {
+            console.error('❌ Error checking focus status:', err);
+            return res.status(500).json({ error: 'Database error' });
+        }
+        
+        res.json({ inFocus: results.length > 0 });
+    });
+});
+
 // Protected routes (require authentication)
 app.get('/api/user-selections/:userId/:itemType', requireAuth, (req, res) => {
     const { userId, itemType } = req.params;
