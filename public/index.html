@@ -66,7 +66,7 @@
         <button class="page-btn" id="nextBtn" onclick="nextPage()">Next &raquo;</button>
     </div>
 
-<script>
+<script src="https://www.google.com/recaptcha/api.js?render=6LdnA4krAAAAACqy1umabGKSSfkT2Bt35LLRSvPA">
 let currentView = 'kanji';
 let currentPage = 1;
 let itemsPerPage = 30;
@@ -278,6 +278,23 @@ function handleFreeRegistration(event) {
     
     // Disable button and show loading
     registerButton.disabled = true;
+    registerButton.textContent = 'Verifying you\'re human...';
+    
+    // 🛡️ reCAPTCHA verification
+    grecaptcha.ready(function() {
+        grecaptcha.execute('6LdnA4krAAAAACqy1umabGKSSfkT2Bt35LLRSvPA', {action: 'register'}).then(function(token) {
+            // Now submit with reCAPTCHA token
+            submitRegistration(username, email, token, registerButton, errorDiv, successDiv);
+        }).catch(function(error) {
+            console.error('reCAPTCHA error:', error);
+            showRegisterError('Security verification failed. Please try again.');
+            registerButton.disabled = false;
+            registerButton.textContent = 'Create Free Account';
+        });
+    });
+}
+
+function submitRegistration(username, email, recaptchaToken, registerButton, errorDiv, successDiv) {
     registerButton.textContent = 'Creating Account...';
     
     fetch('/api/register-free', {
@@ -285,7 +302,11 @@ function handleFreeRegistration(event) {
         headers: {
             'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ username: username, email: email })
+        body: JSON.stringify({ 
+            username: username, 
+            email: email,
+            recaptchaToken: recaptchaToken
+        })
     })
     .then(function(response) {
         return response.json();
@@ -295,7 +316,7 @@ function handleFreeRegistration(event) {
             showRegisterSuccess('Account created successfully! Check your email for login credentials.');
             // Clear the form
             document.getElementById('registerForm').reset();
-            statusDiv.innerHTML = '';
+            document.getElementById('regUsernameStatus').innerHTML = '';
             
             // Switch to login tab after a delay
             setTimeout(function() {
