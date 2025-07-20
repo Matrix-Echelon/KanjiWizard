@@ -690,14 +690,22 @@ function showMainApp() {
 }
 
 function createPricingButton() {
+    console.log('🧪 createPricingButton DEBUG:', {
+        isAuthenticated: isAuthenticated,
+        currentUser: currentUser,
+        hasRole: currentUser && currentUser.role,
+        roleValue: currentUser ? currentUser.role : 'no user',
+        roleType: currentUser ? typeof currentUser.role : 'no user'
+    });
+    
     if (!isAuthenticated) {
-        // Guest user - normal pricing button
+        console.log('→ Returning Pricing button (guest)');
         return '<button class="nav-btn" onclick="showPricing()">Pricing</button>';
     } else if (currentUser && currentUser.role == 'registered') {
-        // Registered user - highlighted upgrade button
+        console.log('→ Returning Upgrade button (registered)');
         return '<button class="nav-btn upgrade-available" onclick="showPricing()">Upgrade</button>';
     } else {
-        // Paid user - no pricing button needed
+        console.log('→ Returning no button (paid user)');
         return '';
     }
 }
