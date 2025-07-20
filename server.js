@@ -2222,7 +2222,9 @@ app.get('/api/focus-list/:userId', requireAuth, (req, res) => {
             CASE 
                 WHEN ufi.item_type = 'word' THEN w.reading
                 ELSE NULL
-            END as reading
+            END as reading,
+            k.onyomi,
+            k.kunyomi
         FROM user_focus_items ufi
         LEFT JOIN kanji k ON ufi.item_type = 'kanji' AND ufi.item_id = k.id
         LEFT JOIN words w ON ufi.item_type = 'word' AND ufi.item_id = w.id
