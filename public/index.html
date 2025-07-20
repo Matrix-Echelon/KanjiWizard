@@ -1547,6 +1547,9 @@ function saveQuizSession() {
             userAnswer: result.userAnswer
         }))
     };
+
+    console.log('🐛 Session data being sent:', sessionData);
+    console.log('🐛 First question detail:', sessionData.questionDetails[0]);
     
     fetch('/api/save-quiz-session', {
         method: 'POST',
