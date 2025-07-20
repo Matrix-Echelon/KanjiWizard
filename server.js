@@ -578,8 +578,8 @@ function isSubmissionTooFast(ip, minSeconds = 5) {
 
 // 5. SIMPLE MATH CHALLENGE (User-friendly alternative to reCAPTCHA)
 function generateMathChallenge() {
-    const a = Math.floor(Math.random() * 10) + 1;
-    const b = Math.floor(Math.random() * 10) + 1;
+    const a = Math.floor(Math.random() * 90) + 1;
+    const b = Math.floor(Math.random() * 90) + 1;
     return {
         question: `What is ${a} + ${b}?`,
         answer: a + b,
