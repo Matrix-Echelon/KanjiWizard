@@ -583,7 +583,7 @@ app.post('/api/register-free', checkIPBlacklist, function(req, res) {
                         const userId = result.insertId;
                         
                         // Send welcome email
-                        const welcomeEmailHtml = createWelcomeEmailHTML(username, tempPassword);
+                        const welcomeEmailHtml = createWelcomeEmailHTML(username, tempPassword, null);
                         
                         console.log('📧 Sending welcome email to:', email);
                         sendEmail(
@@ -625,7 +625,7 @@ app.post('/api/register-free', checkIPBlacklist, function(req, res) {
 });
 
 // Email template for NEW users (with credentials)
-function createWelcomeEmailHTML(email, username, tempPassword, amount) {
+function createWelcomeEmailHTML(username, tempPassword, amount) {
     return `
         <!DOCTYPE html>
         <html>
@@ -1178,7 +1178,7 @@ async function handleSuccessfulPayment(session) {
                         console.log('✅ User account created for:', email, 'with username:', chosenUsername, 'and role: paid');
                         
                         // Send welcome email (with credentials)
-                        const welcomeEmailHtml = createWelcomeEmailHTML(email, chosenUsername, tempPassword, amount);
+                        const welcomeEmailHtml = createWelcomeEmailHTML(chosenUsername, tempPassword, amount);
                         console.log('📧 Sending welcome email to:', email);
                         
                         const emailSent = await sendEmail(
