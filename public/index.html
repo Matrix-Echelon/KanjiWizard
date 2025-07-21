@@ -1541,7 +1541,7 @@ function startQuizWithType(quizType, maxQuestions) {
     content.innerHTML = '<div class="loading">Preparing quiz...</div>';
     
     // Create quiz session first
-    createQuizSession(quizType, quizCount).then(() => {
+    createQuizSession(currentQuizType, quizCount).then(() => {
         // Then load items and start quiz
         Promise.all([
             loadUserQuizItems('kanji'),
