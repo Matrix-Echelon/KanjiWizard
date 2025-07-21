@@ -3395,3 +3395,107 @@ body {
 .quiz-btn.focus-list-btn:hover {
     background: linear-gradient(135deg, #ff5252, #f44336);
 }
+
+/* Announcement Banner Styles */
+.announcements-container {
+    margin-bottom: 20px;
+}
+
+.announcement {
+    padding: 12px 20px;
+    margin-bottom: 10px;
+    border-radius: 8px;
+    font-size: 14px;
+    line-height: 1.5;
+    position: relative;
+    animation: slideDown 0.3s ease-out;
+}
+
+.announcement:last-child {
+    margin-bottom: 0;
+}
+
+/* Announcement Types */
+.announcement.info {
+    background: linear-gradient(135deg, #e3f2fd, #bbdefb);
+    border-left: 4px solid #2196f3;
+    color: #1565c0;
+}
+
+.announcement.success {
+    background: linear-gradient(135deg, #e8f5e8, #c8e6c8);
+    border-left: 4px solid #4caf50;
+    color: #2e7d32;
+}
+
+.announcement.warning {
+    background: linear-gradient(135deg, #fff8e1, #ffecb3);
+    border-left: 4px solid #ff9800;
+    color: #e65100;
+}
+
+.announcement.error {
+    background: linear-gradient(135deg, #ffebee, #ffcdd2);
+    border-left: 4px solid #f44336;
+    color: #c62828;
+}
+
+/* Close button for announcements */
+.announcement-close {
+    position: absolute;
+    top: 8px;
+    right: 12px;
+    background: none;
+    border: none;
+    font-size: 16px;
+    cursor: pointer;
+    opacity: 0.7;
+    transition: opacity 0.2s;
+    color: inherit;
+}
+
+.announcement-close:hover {
+    opacity: 1;
+}
+
+/* Animation */
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+    .announcement {
+        padding: 10px 15px;
+        font-size: 13px;
+    }
+    
+    .announcement-close {
+        top: 6px;
+        right: 10px;
+        font-size: 14px;
+    }
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 1;
+        transform: translateY(0);
+        max-height: 100px;
+    }
+    to {
+        opacity: 0;
+        transform: translateY(-10px);
+        max-height: 0;
+        margin-bottom: 0;
+        padding-top: 0;
+        padding-bottom: 0;
+    }
+}
