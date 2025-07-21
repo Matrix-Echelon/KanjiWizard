@@ -2153,6 +2153,7 @@ app.post('/api/quiz-result', requireAuth, (req, res) => {
 });
 
 // Create quiz session at start
+// Create quiz session at start (FIXED VERSION)
 app.post('/api/create-quiz-session', requireAuth, (req, res) => {
     const { userId, sessionType, totalQuestions } = req.body;
     
@@ -2165,8 +2166,8 @@ app.post('/api/create-quiz-session', requireAuth, (req, res) => {
     
     // Insert new quiz session with incomplete status
     db.query(
-        'INSERT INTO quiz_sessions (user_id, session_type, total_questions, started_at, completion_status) VALUES (?, ?, ?, NOW(), ?)',
-        [userId, sessionType, totalQuestions, 'incomplete'],
+        'INSERT INTO quiz_sessions (user_id, session_type, total_questions, correct_answers, started_at, completion_status) VALUES (?, ?, ?, ?, NOW(), ?)',
+        [userId, sessionType, totalQuestions, 0, 'incomplete'], // Added correct_answers = 0
         (err, result) => {
             if (err) {
                 console.error('❌ Error creating quiz session:', err);
