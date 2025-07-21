@@ -7,6 +7,9 @@
     <link rel="stylesheet" href="styles.css?v=15">
 </head>
 <body>
+    <div class="announcements-container" id="announcementsContainer">
+            <!-- Announcements will be loaded here dynamically -->
+     </div>
     <div class="header">
         <h1>🗾 Japanese Learning App</h1>
         <p>Your one-stop shop for customized kanji and vocabulary learning!</p>
@@ -237,6 +240,72 @@ function showLoginScreen() {
     
     // Set up username validation for registration
     setupRegisterUsernameValidation();
+}
+
+// Load and display announcements
+function loadAnnouncements() {
+    fetch('/api/announcements')
+        .then(response => response.json())
+        .then(announcements => {
+            displayAnnouncements(announcements);
+        })
+        .catch(error => {
+            console.error('Error loading announcements:', error);
+        });
+}
+
+// Display announcements in the container
+function displayAnnouncements(announcements) {
+    const container = document.getElementById('announcementsContainer');
+    
+    if (!container) return;
+    
+    // Clear existing announcements
+    container.innerHTML = '';
+    
+    // If no announcements, hide container
+    if (announcements.length === 0) {
+        container.style.display = 'none';
+        return;
+    }
+    
+    // Show container and add announcements
+    container.style.display = 'block';
+    
+    announcements.forEach(announcement => {
+        const announcementDiv = document.createElement('div');
+        announcementDiv.className = `announcement ${announcement.type}`;
+        announcementDiv.id = `announcement-${announcement.id}`;
+        
+        announcementDiv.innerHTML = `
+            ${announcement.message}
+            <button class="announcement-close" onclick="dismissAnnouncement(${announcement.id})" title="Dismiss">&times;</button>
+        `;
+        
+        container.appendChild(announcementDiv);
+    });
+}
+
+// Dismiss an announcement (hide it for this session)
+function dismissAnnouncement(announcementId) {
+    const announcementDiv = document.getElementById(`announcement-${announcementId}`);
+    if (announcementDiv) {
+        announcementDiv.style.animation = 'slideUp 0.3s ease-out forwards';
+        setTimeout(() => {
+            announcementDiv.remove();
+            
+            // Hide container if no more announcements
+            const container = document.getElementById('announcementsContainer');
+            if (container && container.children.length === 0) {
+                container.style.display = 'none';
+            }
+        }, 300);
+    }
+    
+    // Store dismissed announcement in sessionStorage to prevent it from showing again this session
+    const dismissed = JSON.parse(sessionStorage.getItem('dismissedAnnouncements') || '[]');
+    dismissed.push(announcementId);
+    sessionStorage.setItem('dismissedAnnouncements', JSON.stringify(dismissed));
 }
 
 function loadMathChallenge() {
@@ -781,7 +850,11 @@ function showMainApp() {
 
     setTimeout(function() {
         checkTemporaryPassword();
-    }, 1000);
+    }, 800);
+
+    setTimeout(() => {
+        loadAnnouncements();
+    }, 500);
 }
 
 function createPricingButton() {
@@ -1980,7 +2053,7 @@ function saveQuestionDetail(item, isCorrect, userAnswer) {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            console.log('✅ Question detail saved');
+            console.log('✅ Question detail saved - triggers will handle session updates');
         }
     })
     .catch(error => {
