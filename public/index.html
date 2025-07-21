@@ -7,10 +7,6 @@
     <link rel="stylesheet" href="styles.css?v=16">
 </head>
 <body>
-    <div class="announcements-container" id="announcementsContainer">
-            <!-- Announcements will be loaded here dynamically -->
-     </div>
-    <div class="header">
         <h1>🗾 Japanese Learning App</h1>
         <p>Your one-stop shop for customized kanji and vocabulary learning!</p>
         <div class="user-selector">
@@ -771,6 +767,12 @@ function showMainApp() {
     // Restore the original HTML structure
     const content = document.body;
     content.innerHTML = `
+
+        <!-- Announcements Container -->
+        <div class="announcements-container" id="announcementsContainer">
+            <!-- Announcements will be loaded here dynamically -->
+        </div>
+    
         <div class="header">
             <h1>🗾 Kanji Wizard | Japanese Learning App</h1>
             <p>Your one-stop shop for customized kanji and vocabulary learning!</p>
