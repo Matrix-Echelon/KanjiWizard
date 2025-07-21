@@ -1834,7 +1834,6 @@ function selectAnswer(selectedAnswer, correctAnswer, selectedIndex) {
     const questionStartTime = window.currentQuestionStartTime || questionEndTime;
     const timeTaken = Math.round((questionEndTime - questionStartTime) / 1000); // seconds
     
-    
     // Store result locally for scoring
     quizResults.push({ 
         isCorrect: isCorrect,
@@ -1861,8 +1860,14 @@ function selectAnswer(selectedAnswer, correctAnswer, selectedIndex) {
     const answerButtons = document.querySelectorAll('.answer-btn');
     answerButtons.forEach((btn, index) => {
         btn.disabled = true;
-        if (btn.innerHTML === correctAnswer) {
+        
+        // FIXED: Normalize both strings for comparison (remove extra spaces and HTML differences)
+        const btnText = btn.innerHTML.trim().replace(/\s+/g, ' ');
+        const correctText = correctAnswer.trim().replace(/\s+/g, ' ');
+        
+        if (btnText === correctText) {
             btn.classList.add('correct');
+            console.log('✅ Found correct answer and highlighting green:', btnText);
         } else if (index === selectedIndex && !isCorrect) {
             btn.classList.add('incorrect');
         }
