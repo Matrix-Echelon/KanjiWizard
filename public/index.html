@@ -2060,32 +2060,29 @@ function showQuizComplete() {
     }
 }
 
-// Complete quiz session
+// Complete quiz session (TRIGGERS HANDLE EVERYTHING!)
 function completeQuizSession() {
     if (!isAuthenticated || !currentSessionId) return;
     
-    const correctCount = quizResults.filter(result => result.isCorrect).length;
-    const sessionDuration = Math.round((quizEndTime - quizStartTime) / 1000);
-    
+    // Triggers have already handled completion when last question was answered
+    // This is just for logging/verification
     fetch('/api/save-quiz-session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-            sessionId: currentSessionId,
-            correctAnswers: correctCount,
-            sessionDuration: sessionDuration
+            sessionId: currentSessionId
         })
     })
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            console.log('✅ Quiz session completed:', currentSessionId);
+            console.log('✅ Quiz session verified as completed:', currentSessionId, 'Status:', data.status);
         } else {
-            console.error('❌ Failed to complete session:', data.error);
+            console.error('❌ Failed to verify session:', data.error);
         }
     })
     .catch(error => {
-        console.error('❌ Error completing session:', error);
+        console.error('❌ Error verifying session:', error);
     });
 }
 
