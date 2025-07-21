@@ -1699,7 +1699,7 @@ app.get('/payment-canceled', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'payment-canceled.html'));
 });
 
-// ALL EXISTING ROUTES (kanji, words, search, quiz, etc.) GO HERE
+// ALL EXISTING ROUTES (kanji, words, search, , etc.) GO HERE
 // ... (keeping all your existing routes exactly as they are)
 
 // Kanji route - allow guests but filter to N5 only
@@ -2128,28 +2128,100 @@ app.get('/api/user-quiz-items/:userId/:itemType', requireAuth, (req, res) => {
 });
 
 app.post('/api/quiz-result', requireAuth, (req, res) => {
-    const { userId, itemType, itemId, questionType, isCorrect, userAnswer } = req.body;
+    const { userId, itemType, itemId, questionType, isCorrect, userAnswer, sessionId } = req.body;
     
     if (parseInt(userId) !== req.session.userId) {
         return res.status(403).json({ error: 'Access denied' });
     }
     
-    console.log('Saving quiz result:', req.body);
+    console.log('💾 Saving quiz result with session ID:', sessionId);
     
     const query = `
-        INSERT INTO quiz_results (user_id, item_type, item_id, question_type, is_correct)
-        VALUES (?, ?, ?, ?, ?)
+        INSERT INTO quiz_results (user_id, item_type, item_id, question_type, is_correct, session_id)
+        VALUES (?, ?, ?, ?, ?, ?)
     `;
     
-    db.query(query, [userId, itemType, itemId, questionType, isCorrect], (err, results) => {
+    db.query(query, [userId, itemType, itemId, questionType, isCorrect, sessionId], (err, results) => {
         if (err) {
             console.error('Database error:', err);
             res.status(500).json({ error: err.message });
             return;
         }
-        console.log('Quiz result saved successfully');
+        console.log('✅ Quiz result saved with session ID:', sessionId);
         res.json({ success: true });
     });
+});
+
+// Create quiz session at start
+app.post('/api/create-quiz-session', requireAuth, (req, res) => {
+    const { userId, sessionType, totalQuestions } = req.body;
+    
+    // Verify user owns this session
+    if (parseInt(userId) !== req.session.userId) {
+        return res.status(403).json({ error: 'Access denied' });
+    }
+    
+    console.log('🚀 Creating new quiz session for user:', userId, 'Type:', sessionType);
+    
+    // Insert new quiz session with incomplete status
+    db.query(
+        'INSERT INTO quiz_sessions (user_id, session_type, total_questions, started_at, completion_status) VALUES (?, ?, ?, NOW(), ?)',
+        [userId, sessionType, totalQuestions, 'incomplete'],
+        (err, result) => {
+            if (err) {
+                console.error('❌ Error creating quiz session:', err);
+                return res.status(500).json({ error: 'Failed to create quiz session' });
+            }
+            
+            const sessionId = result.insertId;
+            console.log('✅ Quiz session created with ID:', sessionId);
+            
+            res.json({ 
+                success: true, 
+                sessionId: sessionId
+            });
+        }
+    );
+});
+
+// Save individual question detail immediately
+app.post('/api/save-question-detail', requireAuth, (req, res) => {
+    const { sessionId, itemType, itemId, wasCorrect, userAnswer, timeTaken } = req.body;
+    
+    console.log('💾 Saving question detail for session:', sessionId);
+    
+    // Verify session belongs to current user
+    db.query(
+        'SELECT user_id FROM quiz_sessions WHERE id = ?',
+        [sessionId],
+        (err, sessionResults) => {
+            if (err) {
+                console.error('❌ Error checking session ownership:', err);
+                return res.status(500).json({ error: 'Database error' });
+            }
+            
+            if (sessionResults.length === 0) {
+                return res.status(404).json({ error: 'Session not found' });
+            }
+            
+            if (sessionResults[0].user_id !== req.session.userId) {
+                return res.status(403).json({ error: 'Access denied' });
+            }
+            
+            // Save question detail
+            const detailsQuery = 'INSERT INTO quiz_session_details (session_id, item_type, item_id, was_correct, user_answer, time_taken) VALUES (?, ?, ?, ?, ?, ?)';
+            
+            db.query(detailsQuery, [sessionId, itemType, itemId, wasCorrect, userAnswer, timeTaken], (detailsErr, detailsResult) => {
+                if (detailsErr) {
+                    console.error('❌ Error saving question detail:', detailsErr);
+                    return res.status(500).json({ error: 'Failed to save question detail' });
+                }
+                
+                console.log('✅ Question detail saved for session:', sessionId);
+                res.json({ success: true });
+            });
+        }
+    );
 });
 
 // Add item to user's focus list
@@ -2244,73 +2316,30 @@ app.get('/api/focus-list/:userId', requireAuth, (req, res) => {
 
 // Save quiz session with details
 app.post('/api/save-quiz-session', requireAuth, (req, res) => {
-    const { userId, sessionType, totalQuestions, correctAnswers, sessionDuration, questionDetails } = req.body;
-
-    // 🔧 ADD THIS DEBUG:
-    console.log('🐛 Received session data:', {
-        userId, sessionType, totalQuestions, correctAnswers, sessionDuration,
-        questionDetailsCount: questionDetails ? questionDetails.length : 0,
-        firstDetail: questionDetails ? questionDetails[0] : null
-    });
+    const { sessionId, correctAnswers, sessionDuration } = req.body;
     
-    // Verify user owns this session
-    if (parseInt(userId) !== req.session.userId) {
-        return res.status(403).json({ error: 'Access denied' });
-    }
+    console.log('🏁 Completing quiz session:', sessionId);
     
-    console.log('💾 Saving quiz session for user:', userId, 'Type:', sessionType);
-    
-    // Insert quiz session
+    // Update existing session to complete
     db.query(
-        'INSERT INTO quiz_sessions (user_id, session_type, total_questions, correct_answers, session_duration, started_at, completed_at) VALUES (?, ?, ?, ?, ?, NOW() - INTERVAL ? SECOND, NOW())',
-        [userId, sessionType, totalQuestions, correctAnswers, sessionDuration, sessionDuration],
-        (err, sessionResult) => {
+        'UPDATE quiz_sessions SET correct_answers = ?, session_duration = ?, completed_at = NOW(), completion_status = ? WHERE id = ? AND user_id = ?',
+        [correctAnswers, sessionDuration, 'complete', sessionId, req.session.userId],
+        (err, result) => {
             if (err) {
-                console.error('❌ Error saving quiz session:', err);
-                return res.status(500).json({ error: 'Failed to save quiz session' });
+                console.error('❌ Error updating quiz session:', err);
+                return res.status(500).json({ error: 'Failed to update quiz session' });
             }
             
-            const sessionId = sessionResult.insertId;
-            console.log('✅ Quiz session saved with ID:', sessionId);
-            
-            // Insert question details if provided
-            if (questionDetails && questionDetails.length > 0) {
-                const detailsValues = questionDetails.map(detail => [
-                    sessionId,
-                    detail.itemType,
-                    detail.itemId,
-                    detail.wasCorrect,
-                    detail.userAnswer || null,
-                    detail.timeTaken || null
-                ]);
-                
-                const detailsQuery = 'INSERT INTO quiz_session_details (session_id, item_type, item_id, was_correct, user_answer, time_taken) VALUES ?';
-                
-                db.query(detailsQuery, [detailsValues], (detailsErr, detailsResult) => {
-                    if (detailsErr) {
-                        console.error('❌ Error saving quiz details:', detailsErr);
-                        // Don't fail the whole request - session is still saved
-                        return res.json({ 
-                            success: true, 
-                            sessionId: sessionId,
-                            warning: 'Session saved but details failed'
-                        });
-                    }
-                    
-                    console.log('✅ Quiz details saved:', detailsResult.affectedRows, 'questions');
-                    res.json({ 
-                        success: true, 
-                        sessionId: sessionId,
-                        detailsCount: detailsResult.affectedRows
-                    });
-                });
-            } else {
-                // No details to save
-                res.json({ 
-                    success: true, 
-                    sessionId: sessionId 
-                });
+            if (result.affectedRows === 0) {
+                console.error('❌ No session found to update:', sessionId);
+                return res.status(404).json({ error: 'Session not found' });
             }
+            
+            console.log('✅ Quiz session completed:', sessionId);
+            res.json({ 
+                success: true, 
+                sessionId: sessionId
+            });
         }
     );
 });
