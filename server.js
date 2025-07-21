@@ -2315,31 +2315,33 @@ app.get('/api/focus-list/:userId', requireAuth, (req, res) => {
     });
 });
 
-// Save quiz session with details
+// Quiz completion endpoint (SIMPLIFIED - triggers handle everything!)
 app.post('/api/save-quiz-session', requireAuth, (req, res) => {
-    const { sessionId, correctAnswers, sessionDuration } = req.body;
+    const { sessionId } = req.body;
     
-    console.log('🏁 Completing quiz session:', sessionId);
+    console.log('🏁 Manual completion request for session:', sessionId);
     
-    // Update existing session to complete
+    // Just verify the session exists and belongs to user
+    // Triggers have already handled all the completion logic
     db.query(
-        'UPDATE quiz_sessions SET correct_answers = ?, session_duration = ?, completed_at = NOW(), completion_status = ? WHERE id = ? AND user_id = ?',
-        [correctAnswers, sessionDuration, 'complete', sessionId, req.session.userId],
+        'SELECT completion_status FROM quiz_sessions WHERE id = ? AND user_id = ?',
+        [sessionId, req.session.userId],
         (err, result) => {
             if (err) {
-                console.error('❌ Error updating quiz session:', err);
-                return res.status(500).json({ error: 'Failed to update quiz session' });
+                console.error('❌ Error checking quiz session:', err);
+                return res.status(500).json({ error: 'Failed to check quiz session' });
             }
             
-            if (result.affectedRows === 0) {
-                console.error('❌ No session found to update:', sessionId);
+            if (result.length === 0) {
+                console.error('❌ No session found:', sessionId);
                 return res.status(404).json({ error: 'Session not found' });
             }
             
-            console.log('✅ Quiz session completed:', sessionId);
+            console.log('✅ Quiz session verified:', sessionId, 'Status:', result[0].completion_status);
             res.json({ 
                 success: true, 
-                sessionId: sessionId
+                sessionId: sessionId,
+                status: result[0].completion_status
             });
         }
     );
