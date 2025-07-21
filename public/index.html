@@ -1535,37 +1535,73 @@ function startQuizWithType(quizType, maxQuestions) {
     currentQuestionIndex = 0;
     quizResults = [];
     hasAnswered = false;
+    currentSessionId = null; // Reset session ID
     
     const content = document.getElementById('content');
     content.innerHTML = '<div class="loading">Preparing quiz...</div>';
     
-    // Load items with focus priority
-    Promise.all([
-        loadUserQuizItems('kanji'),
-        loadUserQuizItems('word'),
-        loadUserFocusItems(),
-        fetch('/api/kanji').then(response => response.json()),
-        fetch('/api/words').then(response => response.json())
-    ]).then(([selectedKanji, selectedWords, focusItems, allKanji, allWords]) => {
-        
-        let selectedItems = [];
-        if (quizType === 'kanji') {
-            selectedItems = selectedKanji;
-        } else if (quizType === 'words') {
-            selectedItems = selectedWords;
-        } else { // mixed
-            selectedItems = [...selectedKanji, ...selectedWords];
+    // Create quiz session first
+    createQuizSession(quizType, quizCount).then(() => {
+        // Then load items and start quiz
+        Promise.all([
+            loadUserQuizItems('kanji'),
+            loadUserQuizItems('word'),
+            loadUserFocusItems(),
+            fetch('/api/kanji').then(response => response.json()),
+            fetch('/api/words').then(response => response.json())
+        ]).then(([selectedKanji, selectedWords, focusItems, allKanji, allWords]) => {
+            
+            let selectedItems = [];
+            if (quizType === 'kanji') {
+                selectedItems = selectedKanji;
+            } else if (quizType === 'words') {
+                selectedItems = selectedWords;
+            } else { // mixed
+                selectedItems = [...selectedKanji, ...selectedWords];
+            }
+            
+            // Apply focus weighting and select items
+            const weightedItems = applyFocusWeighting(selectedItems, focusItems);
+            quizData = selectWeightedQuizItems(weightedItems, quizCount);
+            
+            // Store all items for generating wrong answers
+            window.allKanjiForAnswers = allKanji;
+            window.allWordsForAnswers = allWords;
+            
+            showQuestion();
+        });
+    }).catch(error => {
+        console.error('Error creating quiz session:', error);
+        content.innerHTML = '<div class="error">Error creating quiz session: ' + error.message + '</div>';
+    });
+}
+
+// Create quiz session at start
+function createQuizSession(sessionType, totalQuestions) {
+    if (!isAuthenticated) {
+        console.log('👤 Guest mode: No session created');
+        return Promise.resolve(); // Return resolved promise for guests
+    }
+    
+    const userId = getCurrentUserId();
+    
+    return fetch('/api/create-quiz-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            userId: userId,
+            sessionType: sessionType,
+            totalQuestions: totalQuestions
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            currentSessionId = data.sessionId;
+            console.log('✅ Quiz session created:', currentSessionId);
+        } else {
+            throw new Error(data.error || 'Failed to create session');
         }
-        
-        // 🆕 Apply focus weighting and select items
-        const weightedItems = applyFocusWeighting(selectedItems, focusItems);
-        quizData = selectWeightedQuizItems(weightedItems, quizCount);
-        
-        // Store all items for generating wrong answers
-        window.allKanjiForAnswers = allKanji;
-        window.allWordsForAnswers = allWords;
-        
-        showQuestion();
     });
 }
 
@@ -1887,9 +1923,9 @@ function saveQuizResult(item, isCorrect, userAnswer) {
         return;
     }
     
-    // Existing logic for authenticated users
     const userId = getCurrentUserId();
     
+    // Save individual result with session ID
     fetch('/api/quiz-result', {
         method: 'POST',
         headers: {
@@ -1901,10 +1937,54 @@ function saveQuizResult(item, isCorrect, userAnswer) {
             itemId: item.id,
             questionType: 'meaning',
             isCorrect: isCorrect,
-            userAnswer: userAnswer
+            userAnswer: userAnswer,
+            sessionId: currentSessionId
         })
-    }).catch(error => {
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            console.log('✅ Quiz result saved to session:', currentSessionId);
+            
+            // Also save to session_details table immediately
+            saveQuestionDetail(item, isCorrect, userAnswer);
+        } else {
+            console.error('❌ Failed to save quiz result:', data.error);
+        }
+    })
+    .catch(error => {
         console.error('Error saving quiz result:', error);
+    });
+}
+
+// Save individual question detail immediately
+function saveQuestionDetail(item, isCorrect, userAnswer) {
+    if (!isAuthenticated || !currentSessionId) return;
+    
+    const questionEndTime = Date.now();
+    const questionStartTime = window.currentQuestionStartTime || questionEndTime;
+    const timeTaken = Math.round((questionEndTime - questionStartTime) / 1000);
+    
+    fetch('/api/save-question-detail', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            sessionId: currentSessionId,
+            itemType: item.item_type,
+            itemId: item.id,
+            wasCorrect: isCorrect,
+            userAnswer: userAnswer,
+            timeTaken: timeTaken
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            console.log('✅ Question detail saved');
+        }
+    })
+    .catch(error => {
+        console.error('Error saving question detail:', error);
     });
 }
 
@@ -1920,9 +2000,12 @@ function quitQuiz() {
 }
 
 function showQuizComplete() {
-
     quizEndTime = Date.now();
-    saveQuizSession();   
+    
+    // Complete the session if authenticated
+    if (isAuthenticated && currentSessionId) {
+        completeQuizSession();
+    }
     
     const correctCount = quizResults.filter(result => result.isCorrect).length;
     const totalQuestions = quizResults.length;
@@ -1975,6 +2058,35 @@ function showQuizComplete() {
             </div>
         `;
     }
+}
+
+// Complete quiz session
+function completeQuizSession() {
+    if (!isAuthenticated || !currentSessionId) return;
+    
+    const correctCount = quizResults.filter(result => result.isCorrect).length;
+    const sessionDuration = Math.round((quizEndTime - quizStartTime) / 1000);
+    
+    fetch('/api/save-quiz-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            sessionId: currentSessionId,
+            correctAnswers: correctCount,
+            sessionDuration: sessionDuration
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            console.log('✅ Quiz session completed:', currentSessionId);
+        } else {
+            console.error('❌ Failed to complete session:', data.error);
+        }
+    })
+    .catch(error => {
+        console.error('❌ Error completing session:', error);
+    });
 }
 
 function displayKanji(kanjiList) {
@@ -2675,10 +2787,11 @@ function startActualFocusQuiz(focusItems) {
     }
     
     // Set up quiz with focus items only
-    currentQuizType = 'focus'; // 🆕 CHANGE TO 'focus' for tracking
+    currentQuizType = 'focus';
     currentQuestionIndex = 0;
     quizResults = [];
     hasAnswered = false;
+    currentSessionId = null; // Reset session ID
     
     // Convert focus items to proper quiz format
     quizData = focusItems.map(item => ({
@@ -2698,16 +2811,22 @@ function startActualFocusQuiz(focusItems) {
     const content = document.getElementById('content');
     content.innerHTML = '<div class="loading">Preparing focus quiz...</div>';
     
-    // Load all items for wrong answers
-    Promise.all([
-        fetch('/api/kanji').then(response => response.json()),
-        fetch('/api/words').then(response => response.json())
-    ]).then(([allKanji, allWords]) => {
-        window.allKanjiForAnswers = allKanji;
-        window.allWordsForAnswers = allWords;
-        
-        // Start the focus quiz
-        showQuestion();
+    // Create quiz session first
+    createQuizSession('focus', quizCount).then(() => {
+        // Load all items for wrong answers
+        Promise.all([
+            fetch('/api/kanji').then(response => response.json()),
+            fetch('/api/words').then(response => response.json())
+        ]).then(([allKanji, allWords]) => {
+            window.allKanjiForAnswers = allKanji;
+            window.allWordsForAnswers = allWords;
+            
+            // Start the focus quiz
+            showQuestion();
+        });
+    }).catch(error => {
+        console.error('Error creating focus quiz session:', error);
+        content.innerHTML = '<div class="error">Error creating focus quiz session: ' + error.message + '</div>';
     });
 }
 
