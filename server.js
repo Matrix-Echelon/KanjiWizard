@@ -1145,6 +1145,51 @@ async function processPasswordReset(user) {
     }
 }
 
+// Get active announcements
+app.get('/api/announcements', (req, res) => {
+    // Determine user type for targeting
+    let userType = 'guests';
+    if (req.session.userId) {
+        // Get user role from session or database
+        db.query('SELECT role FROM users WHERE id = ?', [req.session.userId], (err, results) => {
+            if (err) {
+                console.error('Error checking user role for announcements:', err);
+                userType = 'registered'; // Default fallback
+            } else if (results.length > 0) {
+                userType = results[0].role; // 'registered' or 'paid'
+            }
+            
+            // Get announcements for this user type
+            getAnnouncementsForUser(userType, res);
+        });
+    } else {
+        // Guest user
+        getAnnouncementsForUser('guests', res);
+    }
+});
+
+function getAnnouncementsForUser(userType, res) {
+    const query = `
+        SELECT id, message, type 
+        FROM announcements 
+        WHERE active = TRUE 
+        AND (target_users = 'all' OR target_users = ?)
+        AND (start_date IS NULL OR start_date <= NOW())
+        AND (end_date IS NULL OR end_date >= NOW())
+        ORDER BY created_at DESC
+        LIMIT 5
+    `;
+    
+    db.query(query, [userType], (err, results) => {
+        if (err) {
+            console.error('Error fetching announcements:', err);
+            return res.json([]); // Return empty array on error
+        }
+        
+        res.json(results);
+    });
+}
+
 // PAYMENT ROUTES
 
 // Create Stripe Checkout Session
